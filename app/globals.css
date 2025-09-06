@@ -1,0 +1,368 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+}
+
+@layer base {
+  :root {
+    --font-sans: var(--font-geist-sans);
+    --font-mono: var(--font-geist-mono);
+    /* Colores de marca J&D Consultores */
+    --jd-primary: #005caa;
+    --jd-white: #fefefe;
+    --jd-gray: #595959;
+    --jd-primary-dark: #004a91;
+    --jd-primary-light: #0066bb;
+    --jd-gray-dark: #4a4a4a;
+
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+    --primary: 210 100% 33%; /* #005caa */
+    --primary-foreground: 0 0% 99%; /* #fefefe */
+    --secondary: 210 40% 98%;
+    --secondary-foreground: 222.2 84% 4.9%;
+    --muted: 210 40% 98%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --accent: 210 40% 98%;
+    --accent-foreground: 222.2 84% 4.9%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 222.2 84% 4.9%;
+    --radius: 0.5rem;
+    --sidebar-background: 0 0% 98%;
+    --sidebar-foreground: 240 5.3% 26.1%;
+    --sidebar-primary: 240 5.9% 10%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 240 4.8% 95.9%;
+    --sidebar-accent-foreground: 240 5.9% 10%;
+    --sidebar-border: 220 13% 91%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+    --chart-1: 12 76% 61%;
+    --chart-2: 173 58% 39%;
+    --chart-3: 197 37% 24%;
+    --chart-4: 43 74% 66%;
+    --chart-5: 27 87% 67%;
+  }
+  .dark {
+    --font-sans: var(--font-geist-sans);
+    --font-mono: var(--font-geist-mono);
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 210 40% 98%;
+    --primary-foreground: 222.2 84% 4.9%;
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 212.7 26.8% 83.9%;
+    --sidebar-background: 0 0% 3.9%;
+    --sidebar-foreground: 0 0% 98%;
+    --sidebar-primary: 0 0% 9%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 0 0% 96.1%;
+    --sidebar-accent-foreground: 0 0% 9%;
+    --sidebar-border: 0 0% 89.8%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+    --chart-1: 220 70% 50%;
+    --chart-2: 160 60% 45%;
+    --chart-3: 30 80% 55%;
+    --chart-4: 280 65% 60%;
+    --chart-5: 340 75% 55%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+/* Estilos corporativos J&D Consultores */
+@layer components {
+  .jd-gradient {
+    @apply bg-gradient-to-r from-jd-primary to-jd-primary-dark;
+  }
+
+  .jd-gradient-light {
+    @apply bg-gradient-to-r from-jd-primary-light to-jd-primary;
+  }
+
+  .jd-header {
+    @apply jd-gradient text-jd-white shadow-lg;
+  }
+
+  .jd-card {
+    @apply bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200;
+  }
+
+  .jd-card-hover {
+    @apply jd-card hover:border-jd-primary hover:shadow-jd-primary/20;
+  }
+
+  .jd-button-primary {
+    @apply bg-jd-primary hover:bg-jd-primary-dark text-jd-white font-medium px-4 py-2 rounded-md transition-colors duration-200 shadow-sm hover:shadow-md;
+  }
+
+  .jd-button-secondary {
+    @apply bg-jd-gray hover:bg-jd-gray-dark text-jd-white font-medium px-4 py-2 rounded-md transition-colors duration-200;
+  }
+
+  .jd-button-outline {
+    @apply border border-jd-primary text-jd-primary hover:bg-jd-primary hover:text-jd-white font-medium px-4 py-2 rounded-md transition-colors duration-200;
+  }
+
+  .jd-sidebar {
+    @apply jd-gradient min-h-screen text-jd-white;
+  }
+
+  .jd-sidebar-item {
+    @apply flex items-center px-4 py-3 text-jd-white/80 hover:text-jd-white hover:bg-white/10 rounded-md transition-colors duration-200;
+  }
+
+  .jd-sidebar-item-active {
+    @apply jd-sidebar-item bg-white/20 text-jd-white font-medium;
+  }
+
+  .jd-table {
+    @apply w-full border-collapse;
+  }
+
+  .jd-table th {
+    @apply bg-jd-primary/5 text-jd-primary font-semibold text-left px-4 py-3 border-b border-jd-primary/20;
+  }
+
+  .jd-table td {
+    @apply px-4 py-3 border-b border-gray-200;
+  }
+
+  .jd-table tr:hover {
+    @apply bg-jd-primary/5;
+  }
+
+  .jd-badge-success {
+    @apply bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs font-medium;
+  }
+
+  .jd-badge-warning {
+    @apply bg-orange-100 text-orange-800 px-2 py-1 rounded-full text-xs font-medium;
+  }
+
+  .jd-badge-danger {
+    @apply bg-red-100 text-red-800 px-2 py-1 rounded-full text-xs font-medium;
+  }
+
+  .jd-badge-info {
+    @apply bg-jd-primary/10 text-jd-primary px-2 py-1 rounded-full text-xs font-medium;
+  }
+}
+
+/* Estilos personalizados J&D */
+.jd-shadow {
+  box-shadow: 0 4px 6px -1px rgba(0, 92, 170, 0.1), 0 2px 4px -1px rgba(0, 92, 170, 0.06);
+}
+
+.jd-border {
+  border-color: #005caa;
+}
+
+/* Animaciones corporativas */
+.jd-hover-scale {
+  transition: transform 0.2s ease-in-out;
+}
+
+.jd-hover-scale:hover {
+  transform: scale(1.02);
+}
+
+/* Headers con marca */
+/* Already updated in @layer components */
+
+/* Badges con colores corporativos */
+/* Already updated in @layer components */
+
+/* Sidebar con marca */
+/* Already updated in @layer components */
+
+/* Formularios con estilo corporativo */
+.jd-input {
+  border: 1px solid rgba(0, 92, 170, 0.2);
+  transition: all 0.2s ease-in-out;
+}
+
+.jd-input:focus {
+  border-color: #005caa;
+  box-shadow: 0 0 0 3px rgba(0, 92, 170, 0.1);
+}
+
+/* Alertas con marca */
+.jd-alert-info {
+  background: rgba(0, 92, 170, 0.1);
+  border-left: 4px solid #005caa;
+  color: #004a91;
+}
+
+.jd-alert-success {
+  background: rgba(40, 167, 69, 0.1);
+  border-left: 4px solid #28a745;
+  color: #155724;
+}
+
+.jd-alert-warning {
+  background: rgba(255, 193, 7, 0.1);
+  border-left: 4px solid #ffc107;
+  color: #856404;
+}
+
+.jd-alert-danger {
+  background: rgba(220, 53, 69, 0.1);
+  border-left: 4px solid #dc3545;
+  color: #721c24;
+}
+
+/* Navegación con marca */
+.jd-nav {
+  background: #fefefe;
+  border-bottom: 1px solid rgba(0, 92, 170, 0.1);
+  box-shadow: 0 2px 4px rgba(0, 92, 170, 0.05);
+}
+
+.jd-nav-item {
+  color: #595959;
+  transition: color 0.2s ease-in-out;
+}
+
+.jd-nav-item:hover {
+  color: #005caa;
+}
+
+.jd-nav-item.active {
+  color: #005caa;
+  font-weight: 600;
+}
+
+/* Tablas responsivas con marca */
+/* Already updated in @layer components */
+
+/* Modales con marca */
+.jd-modal-overlay {
+  background: rgba(0, 92, 170, 0.1);
+  backdrop-filter: blur(4px);
+}
+
+.jd-modal {
+  background: #fefefe;
+  border-radius: 12px;
+  box-shadow: 0 20px 40px rgba(0, 92, 170, 0.15);
+}
+
+.jd-modal-header {
+  background: linear-gradient(135deg, #005caa 0%, #0066bb 100%);
+  color: #fefefe;
+  padding: 20px 24px;
+  border-radius: 12px 12px 0 0;
+}
+
+/* Utilidades de espaciado corporativo */
+.jd-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+.jd-section {
+  padding: 60px 0;
+}
+
+.jd-section-sm {
+  padding: 40px 0;
+}
+
+/* Efectos de hover corporativos */
+.jd-hover-lift {
+  transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+}
+
+.jd-hover-lift:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(0, 92, 170, 0.15);
+}
+
+/* Texto con colores corporativos */
+.jd-text-primary {
+  color: #005caa;
+}
+
+.jd-text-secondary {
+  color: #595959;
+}
+
+.jd-text-white {
+  color: #fefefe;
+}
+
+/* Backgrounds corporativos */
+.jd-bg-primary {
+  background: #005caa;
+}
+
+.jd-bg-secondary {
+  background: #595959;
+}
+
+.jd-bg-white {
+  background: #fefefe;
+}
+
+.jd-bg-light {
+  background: #f8f9fa;
+}
+
+/* Bordes corporativos */
+.jd-border-primary {
+  border-color: #005caa;
+}
+
+.jd-border-secondary {
+  border-color: #595959;
+}
+
+.jd-border-light {
+  border-color: rgba(0, 92, 170, 0.1);
+}
+
+/* Botones adicionales para modales */
+.jd-button-danger {
+  @apply bg-red-600 hover:bg-red-700 text-white border-red-600 hover:border-red-700 focus:ring-red-500 transition-colors;
+}
+
+.jd-button-success {
+  @apply bg-green-600 hover:bg-green-700 text-white border-green-600 hover:border-green-700 focus:ring-green-500 transition-colors;
+}
+
+.jd-button-warning {
+  @apply bg-orange-600 hover:bg-orange-700 text-white border-orange-600 hover:border-orange-700 focus:ring-orange-500 transition-colors;
+}

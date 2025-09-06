@@ -1,0 +1,26 @@
+import type React from "react"
+import type { Metadata } from "next"
+import { Inter } from "next/font/google"
+import "./globals.css"
+import { Navigation } from "@/components/navigation"
+
+const inter = Inter({ subsets: ["latin"] })
+
+export const metadata: Metadata = {
+  title: "J&D Consultores - Sistema de Cobranza",
+  description: "Sistema integral de gestión de cobranza y clientes",
+}
+
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode
+}) {
+  return (
+    <html lang="es">
+      <body className={inter.className}>
+        {children}
+      </body>
+    </html>
+  )
+}
