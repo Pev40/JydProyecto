@@ -24,6 +24,8 @@ export interface Cliente {
   FechaVencimiento: string
   Email: string
   Telefono: string
+  Estado: string
+  SaldoPendiente?: number
 }
 
 export interface Pago {
@@ -77,7 +79,14 @@ export async function getClientes(filtros?: ClientesFiltros): Promise<Cliente[]>
         c."FechaRegistro",
         c."FechaVencimiento",
         c."Email",
-        c."Telefono"
+        c."Telefono",
+        c."Estado",
+        COALESCE(
+          (SELECT SUM(cp."MontoCompromiso") 
+           FROM "CompromisoPago" cp 
+           WHERE cp."IdCliente" = c."IdCliente" 
+           AND cp."Estado" = 'PENDIENTE'), 0
+        ) as "SaldoPendiente"
       FROM "Cliente" c
       LEFT JOIN "Clasificacion" cl ON c."IdClasificacion" = cl."IdClasificacion"
       LEFT JOIN "Cartera" ca ON c."IdCartera" = ca."IdCartera"
@@ -89,7 +98,7 @@ export async function getClientes(filtros?: ClientesFiltros): Promise<Cliente[]>
         AND ${filtros?.clasificacion ? sql`cl."Codigo" = ${filtros.clasificacion}` : sql`TRUE`}
         AND ${filtros?.cartera ? sql`c."IdCartera" = ${filtros.cartera}` : sql`TRUE`}
       )
-      ORDER BY c."RazonSocial"
+      ORDER BY c."FechaRegistro" DESC, c."RazonSocial" ASC
     `
 
     return Array.isArray(result) ? result as Cliente[] : []
@@ -608,5 +617,58 @@ export async function getCompromisosPago(clienteId?: number): Promise<Compromiso
   } catch (error) {
     console.error("Error fetching payment commitments:", error)
     throw new Error("Error al obtener compromisos de pago")
+  }
+}
+
+// Función para obtener plantillas de mensajes
+export async function getPlantillasMensajes(): Promise<any[]> {
+  if (!sql) {
+    throw new Error("Base de datos no disponible")
+  }
+
+  try {
+    const result = await sql`
+      SELECT 
+        pm."IdPlantillaMensaje",
+        pm."Nombre",
+        pm."Contenido",
+        pm."IdClasificacion",
+        c."Descripcion" as "ClasificacionNombre"
+      FROM "PlantillaMensaje" pm
+      LEFT JOIN "Clasificacion" c ON pm."IdClasificacion" = c."IdClasificacion"
+      ORDER BY pm."Nombre"
+    `
+
+    return result as any[]
+  } catch (error) {
+    console.error("Error fetching message templates:", error)
+    throw new Error("Error al obtener plantillas de mensajes")
+  }
+}
+
+// Función para obtener cronograma SUNAT por año
+export async function getCronogramaSunatPorAño(año: number): Promise<any[]> {
+  if (!sql) {
+    throw new Error("Base de datos no disponible")
+  }
+
+  try {
+    const result = await sql`
+      SELECT 
+        "IdCronograma",
+        "Año",
+        "Mes",
+        "DigitoRUC",
+        "Dia",
+        "MesVencimiento"
+      FROM "CronogramaSunat"
+      WHERE "Año" = ${año} AND "Estado" = 'ACTIVO'
+      ORDER BY "Mes", "DigitoRUC"
+    `
+
+    return result as any[]
+  } catch (error) {
+    console.error("Error fetching SUNAT cronograma:", error)
+    throw new Error("Error al obtener cronograma SUNAT")
   }
 }

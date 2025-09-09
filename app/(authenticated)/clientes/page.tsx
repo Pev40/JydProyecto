@@ -6,6 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Plus, Eye, Edit, Phone, Mail } from "lucide-react"
 import Link from "next/link"
 import { ClientesFiltros } from "@/components/clientes-filtros"
+import { EstadoClienteActions } from "@/components/estado-cliente-actions"
 
 interface PageProps {
   searchParams: {
@@ -137,6 +138,7 @@ export default async function ClientesPage({ searchParams }: PageProps) {
                     <TableHead>Razón Social</TableHead>
                     <TableHead>RUC/DNI</TableHead>
                     <TableHead>Contacto</TableHead>
+                    <TableHead>Estado</TableHead>
                     <TableHead>Clasificación</TableHead>
                     <TableHead>Cartera</TableHead>
                     <TableHead>Servicio</TableHead>
@@ -171,6 +173,18 @@ export default async function ClientesPage({ searchParams }: PageProps) {
                         </div>
                       </TableCell>
                       <TableCell>
+                        <Badge
+                          variant={cliente.Estado === "ACTIVO" ? "default" : "secondary"}
+                          className={
+                            cliente.Estado === "ACTIVO" 
+                              ? "bg-green-100 text-green-800 hover:bg-green-200" 
+                              : "bg-gray-100 text-gray-800 hover:bg-gray-200"
+                          }
+                        >
+                          {cliente.Estado}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
                         {getClasificacionBadge(cliente.ClasificacionCodigo, cliente.ClasificacionColor)}
                       </TableCell>
                       <TableCell>{cliente.CarteraNombre}</TableCell>
@@ -201,6 +215,11 @@ export default async function ClientesPage({ searchParams }: PageProps) {
                               <Edit className="h-3 w-3" />
                             </Button>
                           </Link>
+                          <EstadoClienteActions
+                            clienteId={cliente.IdCliente}
+                            estadoActual={cliente.Estado}
+                            razonSocial={cliente.RazonSocial}
+                          />
                         </div>
                       </TableCell>
                     </TableRow>

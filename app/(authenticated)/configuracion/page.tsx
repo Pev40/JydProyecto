@@ -97,6 +97,38 @@ export default function ConfiguracionPage() {
             </CardContent>
           </Card>
 
+          {/* Configuración de Cronograma SUNAT */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Settings className="h-5 w-5" />
+                Cronograma SUNAT
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center justify-between p-4 border rounded-lg">
+                <div>
+                  <div className="font-medium">Configuración de Fechas de Vencimiento</div>
+                  <div className="text-sm text-gray-500">
+                    Gestionar cronograma oficial SUNAT por dígitos RUC
+                  </div>
+                </div>
+                <Link href="/configuracion/cronograma-sunat">
+                  <Button variant="outline" size="sm">
+                    <Settings className="h-4 w-4 mr-2" />
+                    Configurar
+                  </Button>
+                </Link>
+              </div>
+
+              <div className="text-sm text-gray-600 p-3 bg-blue-50 rounded-lg">
+                <strong>Información:</strong> El cronograma SUNAT determina las fechas de corte mensual 
+                según el último dígito del RUC de cada cliente. Esta configuración es esencial para 
+                el proceso automático de generación de servicios.
+              </div>
+            </CardContent>
+          </Card>
+
           {/* Configuración de Notificaciones */}
           <Card>
             <CardHeader>

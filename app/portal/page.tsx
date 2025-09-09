@@ -4,51 +4,155 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge"
 import { CalendarDays, CreditCard, DollarSign, User } from "lucide-react"
 import { redirect } from "next/navigation"
+import { ReloadButton } from "@/components/reload-button"
 
 const sql = neon(process.env.DATABASE_URL!)
+
+// Forzar renderizado dinámico
+export const dynamic = 'force-dynamic'
 
 export default async function PortalPage() {
   const user = await getCurrentUser()
 
-  if (!user || user.NombreRol !== "CLIENTE") {
+  if (!user || user.rol !== "CLIENTE") {
     redirect("/login")
   }
 
-  // Obtener información del cliente
-  const cliente = await sql`
-    SELECT * FROM Clientes WHERE IdCliente = ${user.IdCliente}
-  `
-
-  if (cliente.length === 0) {
-    return <div>Cliente no encontrado</div>
+  // Verificar que el usuario tenga idCliente
+  if (!user.idCliente) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-gray-900 mb-4">Error de Configuración</h1>
+          <p className="text-gray-600 mb-4">Tu cuenta no tiene un cliente asociado. Contacta al administrador.</p>
+          <form action="/api/auth/logout" method="POST">
+            <button
+              type="submit"
+              className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md text-sm font-medium"
+            >
+              Cerrar Sesión
+            </button>
+          </form>
+        </div>
+      </div>
+    )
   }
 
-  const clienteData = cliente[0]
+  // Obtener información del cliente
+  let clienteResult, compromisosPago, pagos, compromisos, notificaciones, pagosPendientes
+  
+  try {
+    clienteResult = await sql`
+      SELECT c.*, cl."Descripcion" as "Clasificacion"
+      FROM "Cliente" c
+      LEFT JOIN "Clasificacion" cl ON c."IdClasificacion" = cl."IdClasificacion"
+      WHERE c."IdCliente" = ${user.idCliente}
+    `
 
-  // Obtener pagos del cliente
-  const pagos = await sql`
-    SELECT * FROM Pagos 
-    WHERE IdCliente = ${user.IdCliente}
-    ORDER BY FechaPago DESC
-  `
+    if (clienteResult.length === 0) {
+      return (
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+          <div className="text-center">
+            <h1 className="text-2xl font-bold text-gray-900 mb-4">Cliente no encontrado</h1>
+            <p className="text-gray-600 mb-4">No se encontró información del cliente asociado a tu cuenta.</p>
+            <form action="/api/auth/logout" method="POST">
+              <button
+                type="submit"
+                className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md text-sm font-medium"
+              >
+                Cerrar Sesión
+              </button>
+            </form>
+          </div>
+        </div>
+      )
+    }
 
-  // Obtener notificaciones del cliente
-  const notificaciones = await sql`
-    SELECT * FROM Notificaciones 
-    WHERE IdCliente = ${user.IdCliente}
-    ORDER BY FechaEnvio DESC
-    LIMIT 5
-  `
+    const clienteData = clienteResult[0]
 
+    // Obtener datos de forma paralela para mejorar performance
+    const [
+      compromisosPagoResult,
+      pagosResult,
+      compromisosResult,
+      notificacionesResult,
+      pagosPendientesResult
+    ] = await Promise.all([
+      // Compromisos de pago del cliente
+      sql`
+        SELECT cp.*, s."Nombre" as "ServicioNombre"
+        FROM "CompromisoPago" cp
+        LEFT JOIN "Servicio" s ON s."IdServicio" = (
+          SELECT "IdServicio" FROM "Cliente" WHERE "IdCliente" = cp."IdCliente"
+        )
+        WHERE cp."IdCliente" = ${user.idCliente}
+        ORDER BY cp."FechaCompromiso"
+      `,
+      // Pagos realizados
+      sql`
+        SELECT p.*, s."Nombre" as "ServicioNombre"
+        FROM "Pago" p
+        LEFT JOIN "Cliente" c ON p."IdCliente" = c."IdCliente"
+        LEFT JOIN "Servicio" s ON c."IdServicio" = s."IdServicio"
+        WHERE p."IdCliente" = ${user.idCliente}
+        ORDER BY p."Fecha" DESC
+        LIMIT 5
+      `,
+      // Compromisos pendientes
+      sql`
+        SELECT * FROM "CompromisoPago"
+        WHERE "IdCliente" = ${user.idCliente} AND "Estado" = 'PENDIENTE'
+        ORDER BY "FechaCompromiso"
+      `,
+      // Notificaciones del cliente
+      sql`
+        SELECT * FROM "Notificacion" 
+        WHERE "IdCliente" = ${user.idCliente}
+        ORDER BY "FechaEnvio" DESC
+        LIMIT 5
+      `,
+      // Pagos pendientes
+      sql`
+        SELECT COUNT(*) as count FROM "CompromisoPago" 
+        WHERE "IdCliente" = ${user.idCliente} AND "Estado" = 'PENDIENTE'
+      `
+    ])
+
+    compromisosPago = compromisosPagoResult
+    pagos = pagosResult
+    compromisos = compromisosResult
+    notificaciones = notificacionesResult
+    pagosPendientes = pagosPendientesResult
+
+  } catch (error) {
+    console.error("Error al obtener datos del portal:", error)
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-gray-900 mb-4">Error de Base de Datos</h1>
+          <p className="text-gray-600 mb-4">Hubo un problema al cargar tus datos. Intenta nuevamente.</p>
+          <ReloadButton className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium mr-2">
+            Recargar
+          </ReloadButton>
+          <form action="/api/auth/logout" method="POST" className="inline">
+            <button
+              type="submit"
+              className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md text-sm font-medium"
+            >
+              Cerrar Sesión
+            </button>
+          </form>
+        </div>
+      </div>
+    )
+  }
+
+  const clienteData = clienteResult[0]
+  
   // Calcular estadísticas
   const totalPagado = pagos.reduce((sum: number, pago: any) => sum + Number.parseFloat(pago.Monto), 0)
-  const pagosPendientes = await sql`
-    SELECT COUNT(*) as count FROM Compromisos 
-    WHERE IdCliente = ${user.IdCliente} AND Estado = 'PENDIENTE'
-  `
-
   const currentYear = new Date().getFullYear()
-  const pagosEsteAno = pagos.filter((pago: any) => new Date(pago.FechaPago).getFullYear() === currentYear)
+  const pagosEsteAno = pagos.filter((pago: any) => new Date(pago.Fecha).getFullYear() === currentYear)
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -58,7 +162,7 @@ export default async function PortalPage() {
           <div className="flex justify-between items-center py-6">
             <div>
               <h1 className="text-2xl font-bold text-gray-900">Portal del Cliente</h1>
-              <p className="text-gray-600">Bienvenido, {user.Nombre}</p>
+              <p className="text-gray-600">Bienvenido, {user.nombre}</p>
             </div>
             <form action="/api/auth/logout" method="POST">
               <button
@@ -134,11 +238,11 @@ export default async function PortalPage() {
             <CardContent className="space-y-4">
               <div>
                 <label className="text-sm font-medium text-gray-500">Nombre</label>
-                <p className="text-lg">{clienteData.Nombre}</p>
+                <p className="text-lg">{clienteData.RazonSocial}</p>
               </div>
               <div>
-                <label className="text-sm font-medium text-gray-500">RUC</label>
-                <p className="text-lg font-mono">{clienteData.RUC}</p>
+                <label className="text-sm font-medium text-gray-500">RUC/DNI</label>
+                <p className="text-lg font-mono">{clienteData.RucDni}</p>
               </div>
               <div>
                 <label className="text-sm font-medium text-gray-500">Email</label>
@@ -148,10 +252,12 @@ export default async function PortalPage() {
                 <label className="text-sm font-medium text-gray-500">Teléfono</label>
                 <p className="text-lg">{clienteData.Telefono}</p>
               </div>
-              <div>
-                <label className="text-sm font-medium text-gray-500">Dirección</label>
-                <p className="text-lg">{clienteData.Direccion}</p>
-              </div>
+              {clienteData.NombreContacto && (
+                <div>
+                  <label className="text-sm font-medium text-gray-500">Contacto</label>
+                  <p className="text-lg">{clienteData.NombreContacto}</p>
+                </div>
+              )}
             </CardContent>
           </Card>
 
@@ -167,9 +273,9 @@ export default async function PortalPage() {
                   <div key={pago.IdPago} className="flex items-center justify-between p-3 border rounded-lg">
                     <div>
                       <p className="font-medium">S/ {Number.parseFloat(pago.Monto).toFixed(2)}</p>
-                      <p className="text-sm text-gray-500">{new Date(pago.FechaPago).toLocaleDateString()}</p>
+                      <p className="text-sm text-gray-500">{new Date(pago.Fecha).toLocaleDateString()}</p>
                     </div>
-                    <Badge variant="outline">{pago.TipoPago}</Badge>
+                    <Badge variant="outline">{pago.MedioPago}</Badge>
                   </div>
                 ))}
                 {pagos.length === 0 && <p className="text-center text-gray-500 py-4">No hay pagos registrados</p>}
@@ -210,7 +316,7 @@ export default async function PortalPage() {
                 {Array.from({ length: 12 }, (_, i) => {
                   const mes = i + 1
                   const nombreMes = new Date(currentYear, i, 1).toLocaleDateString("es-ES", { month: "long" })
-                  const pagoMes = pagosEsteAno.find((pago: any) => new Date(pago.FechaPago).getMonth() === i)
+                  const pagoMes = pagosEsteAno.find((pago: any) => new Date(pago.Fecha).getMonth() === i)
 
                   return (
                     <div key={mes} className="flex items-center justify-between">

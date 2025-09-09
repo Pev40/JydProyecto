@@ -7,6 +7,7 @@ export interface User {
   email: string
   nombre: string
   rol: string
+  idCliente?: number
   clienteNombre?: string
 }
 
@@ -41,10 +42,14 @@ export async function getCurrentUser(): Promise<User | null> {
         u."Email",
         u."Estado",
         r."Nombre" as "RolNombre",
+        c."IdCliente",
         c."RazonSocial" as "ClienteNombre"
       FROM "Usuario" u
       LEFT JOIN "Rol" r ON u."IdRol" = r."IdRol"
-      LEFT JOIN "Cliente" c ON u."IdUsuario" = c."IdEncargado"
+      LEFT JOIN "Cliente" c ON (
+        (r."Nombre" = 'CLIENTE' AND u."Email" = c."Email") OR 
+        (r."Nombre" != 'CLIENTE' AND u."IdUsuario" = c."IdEncargado")
+      )
       WHERE u."IdUsuario" = ${session.userId} AND u."Estado" = 'ACTIVO'
     `
 
@@ -59,6 +64,7 @@ export async function getCurrentUser(): Promise<User | null> {
       email: usuario.Email,
       nombre: usuario.NombreCompleto,
       rol: usuario.RolNombre,
+      idCliente: usuario.IdCliente,
       clienteNombre: usuario.ClienteNombre,
     }
   } catch (error) {

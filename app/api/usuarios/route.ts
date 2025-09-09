@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { getCurrentUser, createUser } from "@/lib/auth"
+import { getCurrentUser } from "@/lib/auth"
 import { neon } from "@neondatabase/serverless"
+import bcrypt from "bcrypt"
 
 const sql = neon(process.env.DATABASE_URL!)
 
@@ -8,25 +9,25 @@ export async function GET() {
   try {
     const user = await getCurrentUser()
 
-    if (!user || user.NombreRol !== "ADMIN") {
+    if (!user || user.rol !== "ADMIN") {
       return NextResponse.json({ success: false, error: "No autorizado" }, { status: 403 })
     }
 
     const usuarios = await sql`
       SELECT 
-        u.IdUsuario,
-        u.Email,
-        u.Nombre,
-        u.Activo,
-        u.UltimoAcceso,
-        u.FechaCreacion,
-        r.NombreRol,
-        c.RazonSocial as ClienteNombre,
-        c.IdCliente
-      FROM Usuarios u
-      JOIN Roles r ON u.IdRol = r.IdRol
-      LEFT JOIN Clientes c ON u.IdCliente = c.IdCliente
-      ORDER BY u.FechaCreacion DESC
+        u."IdUsuario",
+        u."Email",
+        u."NombreCompleto" as "Nombre",
+        u."Estado" as "Activo",
+        u."FechaUltimaSesion" as "UltimoAcceso",
+        u."FechaCreacion",
+        r."Nombre" as "NombreRol",
+        c."RazonSocial" as "ClienteNombre",
+        c."IdCliente"
+      FROM "Usuario" u
+      JOIN "Rol" r ON u."IdRol" = r."IdRol"
+      LEFT JOIN "Cliente" c ON u."IdUsuario" = c."IdEncargado"
+      ORDER BY u."FechaCreacion" DESC
     `
 
     return NextResponse.json({
@@ -43,7 +44,7 @@ export async function POST(request: NextRequest) {
   try {
     const user = await getCurrentUser()
 
-    if (!user || user.NombreRol !== "ADMIN") {
+    if (!user || user.rol !== "ADMIN") {
       return NextResponse.json({ success: false, error: "No autorizado" }, { status: 403 })
     }
 
@@ -63,7 +64,7 @@ export async function POST(request: NextRequest) {
 
     // Verificar si el email ya existe
     const existingUser = await sql`
-      SELECT IdUsuario FROM Usuarios WHERE Email = ${email}
+      SELECT "IdUsuario" FROM "Usuario" WHERE "Email" = ${email}
     `
 
     if (existingUser.length > 0) {
@@ -72,7 +73,7 @@ export async function POST(request: NextRequest) {
 
     // Verificar que el rol existe
     const rol = await sql`
-      SELECT NombreRol FROM Roles WHERE IdRol = ${idRol}
+      SELECT "Nombre" FROM "Rol" WHERE "IdRol" = ${idRol}
     `
 
     if (rol.length === 0) {
@@ -80,7 +81,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Si es rol CLIENTE, verificar que tenga cliente asociado
-    if (rol[0].NombreRol === "CLIENTE" && !idCliente) {
+    if (rol[0].Nombre === "CLIENTE" && !idCliente) {
       return NextResponse.json(
         { success: false, error: "Los usuarios tipo CLIENTE deben tener un cliente asociado" },
         { status: 400 },
@@ -88,15 +89,18 @@ export async function POST(request: NextRequest) {
     }
 
     // Crear el usuario
-    const result = await createUser(email, password, nombre, idRol, idCliente)
-
-    if (!result.success) {
-      return NextResponse.json({ success: false, error: result.error }, { status: 400 })
-    }
+    const hashedPassword = await bcrypt.hash(password, 10)
+    
+    const nuevoUsuario = await sql`
+      INSERT INTO "Usuario" ("NombreCompleto", "Username", "HashContrasena", "IdRol", "Estado", "Email", "FechaCreacion")
+      VALUES (${nombre}, ${email}, ${hashedPassword}, ${idRol}, 'ACTIVO', ${email}, NOW())
+      RETURNING "IdUsuario"
+    `
 
     return NextResponse.json({
       success: true,
       message: "Usuario creado exitosamente",
+      userId: nuevoUsuario[0].IdUsuario
     })
   } catch (error) {
     console.error("Error creando usuario:", error)

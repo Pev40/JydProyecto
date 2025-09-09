@@ -10,43 +10,54 @@ import { redirect } from "next/navigation"
 
 const sql = neon(process.env.DATABASE_URL!)
 
+// Forzar renderizado dinámico
+export const dynamic = 'force-dynamic'
+
 export default async function UsuariosPage() {
   const user = await getCurrentUser()
-
-  if (!user || user.NombreRol !== "ADMIN") {
-    redirect("/")
+  
+  if (!user) {
+    redirect("/login")
   }
-
-  const usuarios = await sql`
+  
+  if (user.rol === "CLIENTE") {
+    redirect("/portal")
+  }
+  
+  if (user.rol !== "ADMIN") {
+    // Si no es admin pero está autenticado, redirigir a una página apropiada
+    // En lugar de crear un bucle, redirigir a una página de "no autorizado"
+    redirect("/unauthorized")
+  }  const usuarios = await sql`
     SELECT 
-      u.IdUsuario,
-      u.Email,
-      u.Nombre,
-      u.Activo,
-      u.UltimoAcceso,
-      u.FechaCreacion,
-      r.NombreRol,
-      c.RazonSocial as ClienteNombre,
-      c.IdCliente
-    FROM Usuarios u
-    JOIN Roles r ON u.IdRol = r.IdRol
-    LEFT JOIN Clientes c ON u.IdCliente = c.IdCliente
-    ORDER BY u.FechaCreacion DESC
+      u."IdUsuario",
+      u."Email",
+      u."NombreCompleto",
+      u."Estado" as "Activo",
+      u."FechaUltimaSesion" as "UltimoAcceso",
+      u."FechaCreacion",
+      r."Nombre" as "NombreRol",
+      c."RazonSocial" as "ClienteNombre",
+      c."IdCliente"
+    FROM "Usuario" u
+    JOIN "Rol" r ON u."IdRol" = r."IdRol"
+    LEFT JOIN "Cliente" c ON u."IdUsuario" = c."IdEncargado"
+    ORDER BY u."FechaCreacion" DESC
   `
 
   const estadisticas = await sql`
     SELECT 
-      r.NombreRol,
-      COUNT(*) as Total,
-      COUNT(CASE WHEN u.Activo = true THEN 1 END) as Activos
-    FROM Usuarios u
-    JOIN Roles r ON u.IdRol = r.IdRol
-    GROUP BY r.NombreRol, r.IdRol
-    ORDER BY r.IdRol
+      r."Nombre" as "NombreRol",
+      COUNT(*) as "Total",
+      COUNT(CASE WHEN u."Estado" = 'ACTIVO' THEN 1 END) as "Activos"
+    FROM "Usuario" u
+    JOIN "Rol" r ON u."IdRol" = r."IdRol"
+    GROUP BY r."Nombre", r."IdRol"
+    ORDER BY r."IdRol"
   `
 
   const totalUsuarios = await sql`
-    SELECT COUNT(*) as total FROM Usuarios WHERE Activo = true
+    SELECT COUNT(*) as total FROM "Usuario" WHERE "Estado" = 'ACTIVO'
   `
 
   return (
@@ -194,7 +205,7 @@ export default async function UsuariosPage() {
                               <Edit className="h-4 w-4" />
                             </Button>
                           </Link>
-                          {usuario.IdUsuario !== user.IdUsuario && (
+                          {usuario.IdUsuario !== user.id && (
                             <Button
                               variant="outline"
                               size="sm"

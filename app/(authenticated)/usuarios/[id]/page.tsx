@@ -10,10 +10,14 @@ import { redirect, notFound } from "next/navigation"
 
 const sql = neon(process.env.DATABASE_URL!)
 
+// Forzar renderizado dinámico
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+
 export default async function UsuarioDetallePage({ params }: { params: { id: string } }) {
   const user = await getCurrentUser()
 
-  if (!user || user.NombreRol !== "ADMIN") {
+  if (!user || user.rol !== "ADMIN") {
     redirect("/")
   }
 
@@ -25,15 +29,15 @@ export default async function UsuarioDetallePage({ params }: { params: { id: str
   const usuarios = await sql`
     SELECT 
       u.*,
-      r.NombreRol,
-      r.Descripcion as RolDescripcion,
-      c.RazonSocial as ClienteNombre,
-      c.RUC as ClienteRUC,
-      c.IdCliente
-    FROM Usuarios u
-    JOIN Roles r ON u.IdRol = r.IdRol
-    LEFT JOIN Clientes c ON u.IdCliente = c.IdCliente
-    WHERE u.IdUsuario = ${usuarioId}
+      r."Nombre" as "NombreRol",
+      r."Descripcion" as "RolDescripcion",
+      c."RazonSocial" as "ClienteNombre",
+      c."RucDni" as "ClienteRUC",
+      c."IdCliente"
+    FROM "Usuario" u
+    JOIN "Rol" r ON u."IdRol" = r."IdRol"
+    LEFT JOIN "Cliente" c ON u."IdCliente" = c."IdCliente"
+    WHERE u."IdUsuario" = ${usuarioId}
   `
 
   if (usuarios.length === 0) {
@@ -44,11 +48,11 @@ export default async function UsuarioDetallePage({ params }: { params: { id: str
 
   // Obtener permisos del usuario
   const permisos = await sql`
-    SELECT p.NombrePermiso, p.Descripcion, p.Modulo
-    FROM RolPermisos rp
-    JOIN Permisos p ON rp.IdPermiso = p.IdPermiso
-    WHERE rp.IdRol = ${usuario.IdRol}
-    ORDER BY p.Modulo, p.NombrePermiso
+    SELECT p."NombrePermiso", p."Descripcion", p."Modulo"
+    FROM "RolPermisos" rp
+    JOIN "Permisos" p ON rp."IdPermiso" = p."IdPermiso"
+    WHERE rp."IdRol" = ${usuario.IdRol}
+    ORDER BY p."Modulo", p."NombrePermiso"
   `
 
   // Agrupar permisos por módulo

@@ -21,8 +21,29 @@ import { getCurrentUser } from "@/lib/auth"
 import { redirect } from "next/navigation"
 import { getDashboardStats, getActividadesRecientes } from "@/lib/queries"
 
+// Forzar renderizado dinámico
+export const dynamic = 'force-dynamic'
+
 export default async function Dashboard() {
   const user = await getCurrentUser()
+
+  // Si el usuario es cliente, mostrar mensaje o componente específico
+  if (user && user.rol === "CLIENTE") {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-gray-900 mb-4">Acceso Restringido</h1>
+          <p className="text-gray-600 mb-4">Esta sección es solo para administradores.</p>
+          <a 
+            href="/portal" 
+            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium"
+          >
+            Ir al Portal del Cliente
+          </a>
+        </div>
+      </div>
+    )
+  }
 
   if (!user) {
     redirect("/login")
@@ -123,18 +144,20 @@ export default async function Dashboard() {
   ]
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
       {/* Header principal */}
-      <div className="jd-header shadow-sm">
+      <div className="bg-gradient-to-r from-blue-600 to-blue-700 shadow-lg">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="py-6">
+          <div className="py-8">
             <div className="flex items-center justify-between">
               <div>
-                <h1 className="text-3xl font-bold text-white">Bienvenido, {user.nombre}</h1>
-                <p className="text-white/80 mt-1">Panel de control - Sistema de Cobranza J&D Consultores</p>
+                <h1 className="text-3xl font-bold text-white mb-2">Bienvenido, {user.nombre}</h1>
+                <p className="text-blue-100 text-lg">Panel de control - Sistema de Cobranza J&D Consultores</p>
               </div>
               <div className="flex items-center gap-4">
-                <Badge className="jd-badge-secondary">{user.rol}</Badge>
+                <Badge className="bg-white/20 text-white border-white/30 px-4 py-2 text-sm font-medium">
+                  {user.rol}
+                </Badge>
                 <DatabaseStatus />
               </div>
             </div>
@@ -148,45 +171,49 @@ export default async function Dashboard() {
           {stats.map((stat, index) => {
             const Icon = stat.icon
             return (
-              <Card key={index} className="jd-card jd-hover-lift">
+              <Card key={index} className="bg-white shadow-lg hover:shadow-xl transition-all duration-300 border-0 overflow-hidden">
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-gray-600">{stat.title}</p>
-                      <p className="text-2xl font-bold text-gray-900 mt-2">{stat.value}</p>
-                      <div className="flex items-center mt-2">
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-gray-500 uppercase tracking-wide">{stat.title}</p>
+                      <p className="text-3xl font-bold text-gray-900 mt-2 mb-3">{stat.value}</p>
+                      <div className="flex items-center">
                         <span
-                          className={`text-sm font-medium ${
-                            stat.changeType === "positive" ? "text-green-600" : "text-red-600"
+                          className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                            stat.changeType === "positive" 
+                              ? "bg-green-100 text-green-800" 
+                              : "bg-red-100 text-red-800"
                           }`}
                         >
                           {stat.change}
                         </span>
-                        <span className="text-sm text-gray-500 ml-1">vs mes anterior</span>
+                        <span className="text-xs text-gray-500 ml-2">vs mes anterior</span>
                       </div>
                     </div>
-                    <div
-                      className={`p-3 rounded-lg ${
-                        stat.color === "jd-primary"
-                          ? "bg-blue-100"
-                          : stat.color === "green"
-                            ? "bg-green-100"
-                            : stat.color === "blue"
-                              ? "bg-blue-100"
-                              : "bg-red-100"
-                      }`}
-                    >
-                      <Icon
-                        className={`h-6 w-6 ${
+                    <div className="ml-4">
+                      <div
+                        className={`p-4 rounded-2xl ${
                           stat.color === "jd-primary"
-                            ? "text-blue-600"
+                            ? "bg-gradient-to-br from-blue-100 to-blue-200"
                             : stat.color === "green"
-                              ? "text-green-600"
+                              ? "bg-gradient-to-br from-green-100 to-green-200"
                               : stat.color === "blue"
-                                ? "text-blue-600"
-                                : "text-red-600"
+                                ? "bg-gradient-to-br from-blue-100 to-blue-200"
+                                : "bg-gradient-to-br from-red-100 to-red-200"
                         }`}
-                      />
+                      >
+                        <Icon
+                          className={`h-8 w-8 ${
+                            stat.color === "jd-primary"
+                              ? "text-blue-600"
+                              : stat.color === "green"
+                                ? "text-green-600"
+                                : stat.color === "blue"
+                                  ? "text-blue-600"
+                                  : "text-red-600"
+                          }`}
+                        />
+                      </div>
                     </div>
                   </div>
                 </CardContent>
@@ -195,16 +222,16 @@ export default async function Dashboard() {
           })}
         </div>
 
-        {/* Acciones rápidas */}
+        {/* Acciones rápidas y actividad reciente */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
           <div className="lg:col-span-2">
-            <Card className="jd-card">
-              <CardHeader className="jd-header rounded-t-lg">
-                <CardTitle className="text-white flex items-center gap-2">
-                  <Target className="h-5 w-5" />
+            <Card className="bg-white shadow-lg border-0">
+              <CardHeader className="bg-gradient-to-r from-blue-600 to-blue-700 rounded-t-lg">
+                <CardTitle className="text-white flex items-center gap-2 text-xl">
+                  <Target className="h-6 w-6" />
                   Acciones Rápidas
                 </CardTitle>
-                <CardDescription className="text-white/80">
+                <CardDescription className="text-blue-100">
                   Accesos directos a las funciones más utilizadas
                 </CardDescription>
               </CardHeader>
@@ -214,21 +241,21 @@ export default async function Dashboard() {
                     const Icon = action.icon
                     return (
                       <Link key={index} href={action.href}>
-                        <div className="jd-card p-4 hover:shadow-lg transition-all duration-200 cursor-pointer group">
+                        <div className="bg-white border border-gray-200 rounded-xl p-5 hover:shadow-lg hover:border-blue-300 transition-all duration-200 cursor-pointer group">
                           <div className="flex items-center gap-4">
                             <div
-                              className={`p-3 rounded-lg ${
+                              className={`p-3 rounded-xl ${
                                 action.color === "jd-primary"
-                                  ? "bg-blue-100 group-hover:bg-blue-200"
+                                  ? "bg-gradient-to-br from-blue-100 to-blue-200 group-hover:from-blue-200 group-hover:to-blue-300"
                                   : action.color === "green"
-                                    ? "bg-green-100 group-hover:bg-green-200"
+                                    ? "bg-gradient-to-br from-green-100 to-green-200 group-hover:from-green-200 group-hover:to-green-300"
                                     : action.color === "blue"
-                                      ? "bg-blue-100 group-hover:bg-blue-200"
-                                      : "bg-purple-100 group-hover:bg-purple-200"
-                              } transition-colors`}
+                                      ? "bg-gradient-to-br from-blue-100 to-blue-200 group-hover:from-blue-200 group-hover:to-blue-300"
+                                      : "bg-gradient-to-br from-purple-100 to-purple-200 group-hover:from-purple-200 group-hover:to-purple-300"
+                              } transition-all`}
                             >
                               <Icon
-                                className={`h-5 w-5 ${
+                                className={`h-6 w-6 ${
                                   action.color === "jd-primary"
                                     ? "text-blue-600"
                                     : action.color === "green"
@@ -240,12 +267,12 @@ export default async function Dashboard() {
                               />
                             </div>
                             <div className="flex-1">
-                              <h3 className="font-semibold text-gray-900 group-hover:text-blue-600 transition-colors">
+                              <h3 className="font-semibold text-gray-900 group-hover:text-blue-600 transition-colors text-lg">
                                 {action.title}
                               </h3>
-                              <p className="text-sm text-gray-600">{action.description}</p>
+                              <p className="text-sm text-gray-600 mt-1">{action.description}</p>
                             </div>
-                            <ArrowUpRight className="h-4 w-4 text-gray-400 group-hover:text-blue-600 transition-colors" />
+                            <ArrowUpRight className="h-5 w-5 text-gray-400 group-hover:text-blue-600 transition-colors" />
                           </div>
                         </div>
                       </Link>
@@ -257,56 +284,65 @@ export default async function Dashboard() {
           </div>
 
           {/* Actividad reciente */}
-          <Card className="jd-card">
-            <CardHeader className="jd-header rounded-t-lg">
-              <CardTitle className="text-white flex items-center gap-2">
-                <Activity className="h-5 w-5" />
+          <Card className="bg-white shadow-lg border-0 h-fit">
+            <CardHeader className="bg-gradient-to-r from-green-600 to-green-700 rounded-t-lg">
+              <CardTitle className="text-white flex items-center gap-2 text-xl">
+                <Activity className="h-6 w-6" />
                 Actividad Reciente
               </CardTitle>
             </CardHeader>
-            <CardContent className="p-6">
-              <div className="space-y-4">
-                {actividadesRecientes.map((actividad) => (
+            <CardContent className="p-0">
+              {/* Contenedor con altura fija y scroll */}
+              <div className="h-80 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
+                <div className="p-6 space-y-4">
+                  {actividadesRecientes.map((actividad) => (
                   <div
                     key={actividad.id}
-                    className="flex items-start gap-3 p-3 rounded-lg hover:bg-gray-50 transition-colors"
+                    className="flex items-start gap-4 p-4 rounded-xl border border-gray-100 hover:bg-gray-50 hover:border-gray-200 transition-all duration-200"
                   >
                     <div
-                      className={`p-2 rounded-full ${
+                      className={`p-3 rounded-full ${
                         actividad.estado === "CONFIRMADO" || actividad.estado === "completed"
-                          ? "bg-green-100"
+                          ? "bg-gradient-to-br from-green-100 to-green-200"
                           : actividad.estado === "nuevo" || actividad.tipo === "cliente"
-                            ? "bg-blue-100"
+                            ? "bg-gradient-to-br from-blue-100 to-blue-200"
                             : actividad.estado === "enviado" || actividad.estado === "ENVIADO"
-                              ? "bg-yellow-100"
+                              ? "bg-gradient-to-br from-yellow-100 to-yellow-200"
                               : actividad.tipo === "compromiso"
-                                ? "bg-purple-100"
-                                : "bg-gray-100"
+                                ? "bg-gradient-to-br from-purple-100 to-purple-200"
+                                : "bg-gradient-to-br from-gray-100 to-gray-200"
                       }`}
                     >
                       {actividad.tipo === "pago" ? (
-                        <CreditCard className="h-4 w-4 text-green-600" />
+                        <CreditCard className="h-5 w-5 text-green-600" />
                       ) : actividad.tipo === "cliente" ? (
-                        <Users className="h-4 w-4 text-blue-600" />
+                        <Users className="h-5 w-5 text-blue-600" />
                       ) : actividad.tipo === "notificacion" ? (
-                        <FileText className="h-4 w-4 text-yellow-600" />
+                        <FileText className="h-5 w-5 text-yellow-600" />
                       ) : actividad.tipo === "compromiso" ? (
-                        <Target className="h-4 w-4 text-purple-600" />
+                        <Target className="h-5 w-5 text-purple-600" />
                       ) : (
-                        <Clock className="h-4 w-4 text-gray-600" />
+                        <Clock className="h-5 w-5 text-gray-600" />
                       )}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-900 truncate">{actividad.descripcion}</p>
-                      {actividad.monto && <p className="text-sm font-semibold text-green-600">{actividad.monto}</p>}
-                      <p className="text-xs text-gray-500">{actividad.fecha}</p>
+                      <p className="text-sm font-medium text-gray-900 leading-relaxed">{actividad.descripcion}</p>
+                      {actividad.monto && (
+                        <p className="text-sm font-semibold text-green-600 mt-1">{actividad.monto}</p>
+                      )}
+                      <p className="text-xs text-gray-500 mt-2 flex items-center gap-1">
+                        <Clock className="h-3 w-3" />
+                        {actividad.fecha}
+                      </p>
                     </div>
                   </div>
                 ))}
+                </div>
               </div>
-              <div className="mt-4 pt-4 border-t">
+              {/* Botón fuera del área de scroll */}
+              <div className="px-6 pb-6 pt-2 border-t border-gray-200">
                 <Link href="/alertas">
-                  <Button variant="outline" className="w-full jd-button-secondary bg-transparent">
+                  <Button variant="outline" className="w-full hover:bg-green-50 hover:border-green-300 hover:text-green-700 transition-colors">
                     Ver todas las actividades
                   </Button>
                 </Link>
@@ -315,9 +351,21 @@ export default async function Dashboard() {
           </Card>
         </div>
 
-        {/* Gráficos y alertas */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        {/* Sección de Gráficos */}
+        <div className="mb-8">
+          <div className="mb-6">
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">Análisis y Estadísticas</h2>
+            <p className="text-gray-600">Visualización de datos y tendencias del sistema</p>
+          </div>
           <DashboardCharts />
+        </div>
+
+        {/* Sección de Compromisos y Alertas */}
+        <div className="mb-8">
+          <div className="mb-6">
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">Gestión de Compromisos</h2>
+            <p className="text-gray-600">Monitoreo y alertas de compromisos de pago</p>
+          </div>
           <AlertasCompromisos />
         </div>
       </div>

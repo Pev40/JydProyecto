@@ -5,25 +5,26 @@ import { UsuarioForm } from "@/components/usuario-form"
 
 const sql = neon(process.env.DATABASE_URL!)
 
+// Forzar renderizado dinámico
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+
 export default async function NuevoUsuarioPage() {
   const user = await getCurrentUser()
 
-  if (!user || user.NombreRol !== "ADMIN") {
+  if (!user || user.rol !== "ADMIN") {
     redirect("/")
   }
 
   const roles = await sql`
-    SELECT IdRol, NombreRol, Descripcion
-    FROM Roles
-    ORDER BY IdRol
-  `
-
-  const clientes = await sql`
-    SELECT IdCliente, RazonSocial, RUC
-    FROM Clientes
-    WHERE Activo = true
-    ORDER BY RazonSocial
-  `
+    SELECT "IdRol", "Nombre" as "NombreRol", "Descripcion"
+    FROM "Rol"
+    ORDER BY "IdRol"
+  ` as Array<{
+    IdRol: number
+    NombreRol: string
+    Descripcion: string
+  }>
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -37,7 +38,7 @@ export default async function NuevoUsuarioPage() {
       </header>
 
       <main className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <UsuarioForm roles={roles} clientes={clientes} />
+        <UsuarioForm roles={roles} />
       </main>
     </div>
   )

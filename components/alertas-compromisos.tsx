@@ -141,12 +141,12 @@ export function AlertasCompromisos() {
 
   return (
     <div className="space-y-6">
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card className="border-red-200 bg-red-50">
+      {/* Stats Cards - Una fila horizontal */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Card className="border-red-200 bg-red-50 shadow-md">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-red-800">Compromisos Vencidos</CardTitle>
-            <AlertTriangle className="h-4 w-4 text-red-600" />
+            <AlertTriangle className="h-5 w-5 text-red-600" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-red-600">{alertas.vencidos.length}</div>
@@ -165,10 +165,10 @@ export function AlertasCompromisos() {
           </CardContent>
         </Card>
 
-        <Card className="border-orange-200 bg-orange-50">
+        <Card className="border-orange-200 bg-orange-50 shadow-md">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-orange-800">Compromisos Hoy</CardTitle>
-            <Calendar className="h-4 w-4 text-orange-600" />
+            <Calendar className="h-5 w-5 text-orange-600" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-orange-600">{alertas.hoy.length}</div>
@@ -179,6 +179,7 @@ export function AlertasCompromisos() {
                 variant="outline"
                 onClick={() => enviarAlertas("hoy")}
                 disabled={enviandoAlertas || alertas.hoy.length === 0}
+                className="border-orange-300 text-orange-700 hover:bg-orange-100"
               >
                 <Send className="h-3 w-3 mr-1" />
                 Recordar
@@ -187,16 +188,22 @@ export function AlertasCompromisos() {
           </CardContent>
         </Card>
 
-        <Card className="border-blue-200 bg-blue-50">
+        <Card className="border-blue-200 bg-blue-50 shadow-md">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-blue-800">Próximos 3 Días</CardTitle>
-            <Clock className="h-4 w-4 text-blue-600" />
+            <Clock className="h-5 w-5 text-blue-600" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-blue-600">{alertas.proximos.length}</div>
             <div className="flex justify-between items-center mt-2">
               <p className="text-xs text-blue-600">Próximos a vencer</p>
-              <Button size="sm" variant="outline" disabled>
+              <Button 
+                size="sm" 
+                variant="outline"
+                onClick={() => enviarAlertas("proximos")}
+                disabled={enviandoAlertas || alertas.proximos.length === 0}
+                className="border-blue-300 text-blue-700 hover:bg-blue-100"
+              >
                 <Clock className="h-3 w-3 mr-1" />
                 Monitorear
               </Button>

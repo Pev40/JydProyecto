@@ -73,3 +73,48 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     return NextResponse.json({ success: false, error: "Error al actualizar el cliente" }, { status: 500 })
   }
 }
+
+export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
+  if (!sql) {
+    return NextResponse.json(
+      { error: "Base de datos no configurada. Configure DATABASE_URL." },
+      { status: 500 },
+    )
+  }
+
+  try {
+    const clienteId = Number.parseInt(params.id)
+    
+    if (isNaN(clienteId)) {
+      return NextResponse.json(
+        { error: "ID de cliente inválido" },
+        { status: 400 }
+      )
+    }
+
+    const clientes = await sql`
+      SELECT 
+        "IdCliente",
+        "RazonSocial",
+        "RucDni",
+        "Estado"
+      FROM "Cliente"
+      WHERE "IdCliente" = ${clienteId}
+    `
+
+    if (clientes.length === 0) {
+      return NextResponse.json(
+        { error: "Cliente no encontrado" },
+        { status: 404 }
+      )
+    }
+
+    return NextResponse.json(clientes[0])
+  } catch (error) {
+    console.error("Error al obtener cliente:", error)
+    return NextResponse.json(
+      { error: "Error interno del servidor" },
+      { status: 500 }
+    )
+  }
+}

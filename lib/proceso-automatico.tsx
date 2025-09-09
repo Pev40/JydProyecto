@@ -98,9 +98,16 @@ export class ProcesoAutomatico {
           c."Telefono",
           c."UltimoDigitoRUC",
           c."MontoFijoMensual",
+          c."Estado",
           s."Nombre" as "ServicioNombre",
           cs."Dia" as "DiaCorte",
-          cs."MesVencimiento"
+          cs."MesVencimiento",
+          COALESCE(
+            (SELECT SUM(cp."Monto") 
+             FROM "CompromisoPago" cp 
+             WHERE cp."IdCliente" = c."IdCliente" 
+             AND cp."Estado" = 'PENDIENTE'), 0
+          ) as "SaldoPendiente"
         FROM "Cliente" c
         JOIN "Servicio" s ON c."IdServicio" = s."IdServicio"
         JOIN "CronogramaSunat" cs ON (
@@ -110,10 +117,18 @@ export class ProcesoAutomatico {
           (c."UltimoDigitoRUC" IN (6,7) AND cs."DigitoRUC" = 6) OR
           (c."UltimoDigitoRUC" IN (8,9) AND cs."DigitoRUC" = 8)
         )
-        WHERE c."Estado" = 'ACTIVO'
-          AND cs."Año" = ${año}
+        WHERE cs."Año" = ${año}
           AND cs."Mes" = ${mes}
           AND cs."Dia" = ${dia}
+          AND (
+            c."Estado" = 'ACTIVO' OR 
+            (c."Estado" = 'INACTIVO' AND COALESCE(
+              (SELECT SUM(cp."Monto") 
+               FROM "CompromisoPago" cp 
+               WHERE cp."IdCliente" = c."IdCliente" 
+               AND cp."Estado" = 'PENDIENTE'), 0
+            ) > 0)
+          )
         ORDER BY c."RazonSocial"
       `
 

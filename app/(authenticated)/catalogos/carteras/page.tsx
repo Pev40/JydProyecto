@@ -12,22 +12,31 @@ import Link from "next/link"
 interface Cartera {
   IdCartera: number
   Nombre: string
-  Descripcion: string
+  IdEncargado?: number
+  EncargadoNombre?: string
+  FechaCreacion?: string
   Estado: string
+}
+
+interface Usuario {
+  IdUsuario: number
+  NombreCompleto: string
 }
 
 export default function CarterasPage() {
   const [carteras, setCarteras] = useState<Cartera[]>([])
+  const [usuarios, setUsuarios] = useState<Usuario[]>([])
   const [editando, setEditando] = useState<number | null>(null)
   const [nuevo, setNuevo] = useState(false)
   const [formData, setFormData] = useState({
     Nombre: "",
-    Descripcion: "",
+    IdEncargado: "",
     Estado: "ACTIVA",
   })
 
   useEffect(() => {
     cargarCarteras()
+    cargarUsuarios()
   }, [])
 
   const cargarCarteras = async () => {
@@ -40,16 +49,31 @@ export default function CarterasPage() {
     }
   }
 
+  const cargarUsuarios = async () => {
+    try {
+      const response = await fetch("/api/admin/usuarios")
+      const data = await response.json()
+      setUsuarios(data)
+    } catch (error) {
+      console.error("Error cargando usuarios:", error)
+    }
+  }
+
   const guardar = async () => {
     try {
       const url = editando ? `/api/catalogos/carteras/${editando}` : "/api/catalogos/carteras"
-
       const method = editando ? "PUT" : "POST"
+
+      const dataToSend = {
+        Nombre: formData.Nombre,
+        IdEncargado: formData.IdEncargado ? parseInt(formData.IdEncargado) : null,
+        Estado: formData.Estado,
+      }
 
       await fetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(dataToSend),
       })
 
       await cargarCarteras()
@@ -76,15 +100,16 @@ export default function CarterasPage() {
     setEditando(cartera.IdCartera)
     setFormData({
       Nombre: cartera.Nombre,
-      Descripcion: cartera.Descripcion || "",
+      IdEncargado: cartera.IdEncargado?.toString() || "",
       Estado: cartera.Estado,
     })
+    setNuevo(false)
   }
 
   const cancelar = () => {
     setEditando(null)
     setNuevo(false)
-    setFormData({ Nombre: "", Descripcion: "", Estado: "ACTIVA" })
+    setFormData({ Nombre: "", IdEncargado: "", Estado: "ACTIVA" })
   }
 
   return (
@@ -143,13 +168,20 @@ export default function CarterasPage() {
                 </div>
               </div>
               <div>
-                <Label htmlFor="descripcion">Descripción</Label>
-                <Input
-                  id="descripcion"
-                  value={formData.Descripcion}
-                  onChange={(e) => setFormData({ ...formData, Descripcion: e.target.value })}
-                  placeholder="Descripción de la cartera"
-                />
+                <Label htmlFor="encargado">Encargado</Label>
+                <select
+                  id="encargado"
+                  value={formData.IdEncargado}
+                  onChange={(e) => setFormData({ ...formData, IdEncargado: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                >
+                  <option value="">Sin asignar</option>
+                  {usuarios.map((usuario) => (
+                    <option key={usuario.IdUsuario} value={usuario.IdUsuario}>
+                      {usuario.NombreCompleto}
+                    </option>
+                  ))}
+                </select>
               </div>
               <div className="flex gap-2">
                 <Button onClick={guardar}>
@@ -177,7 +209,14 @@ export default function CarterasPage() {
                     <Badge variant={cartera.Estado === "ACTIVA" ? "default" : "secondary"}>{cartera.Estado}</Badge>
                     <div>
                       <div className="font-medium">{cartera.Nombre}</div>
-                      {cartera.Descripcion && <div className="text-sm text-gray-500">{cartera.Descripcion}</div>}
+                      {cartera.EncargadoNombre && (
+                        <div className="text-sm text-gray-500">Encargado: {cartera.EncargadoNombre}</div>
+                      )}
+                      {cartera.FechaCreacion && (
+                        <div className="text-xs text-gray-400">
+                          Creado: {new Date(cartera.FechaCreacion).toLocaleDateString()}
+                        </div>
+                      )}
                     </div>
                   </div>
                   <div className="flex gap-2">

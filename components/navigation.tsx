@@ -128,7 +128,6 @@ export function Navigation({ userRole }: NavigationProps) {
     },
     { name: "Recibos", href: "/recibos", icon: FileText },
     { name: "Comprobantes", href: "/comprobantes", icon: BookOpen },
-    { name: "Cronograma SUNAT", href: "/cronograma-sunat", icon: Calendar },
     { name: "Servicios Adicionales", href: "/servicios-adicionales", icon: Target },
     { name: "Ingresos Mensuales", href: "/ingresos-mensuales", icon: DollarSign },
     { name: "Plantillas", href: "/plantillas", icon: MessageSquare },
@@ -137,7 +136,7 @@ export function Navigation({ userRole }: NavigationProps) {
   ]
 
   // Solo admin puede ver estas secciones
-  if (userRole === "Administrador") {
+  if (userRole === "ADMIN") {
     navigation.push(
       { name: "Usuarios", href: "/usuarios", icon: Shield },
       {
@@ -227,7 +226,7 @@ export function Navigation({ userRole }: NavigationProps) {
                     {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
                   </button>
 
-                  {isExpanded && (
+                  {isExpanded && item.children && (
                     <div className="ml-4 mt-1 space-y-1">
                       {item.children.map((child) => {
                         const ChildIcon = child.icon

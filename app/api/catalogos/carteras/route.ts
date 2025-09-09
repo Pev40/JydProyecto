@@ -5,13 +5,22 @@ export async function GET() {
   try {
     if (!sql || !(await testConnection())) {
       return NextResponse.json([
-        { IdCartera: 1, Nombre: "Cartera Arequipa", Descripcion: "Clientes de Arequipa", Estado: "ACTIVA" },
-        { IdCartera: 2, Nombre: "Cartera Trujillo", Descripcion: "Clientes de Trujillo", Estado: "ACTIVA" },
+        { IdCartera: 1, Nombre: "Cartera Arequipa", IdEncargado: null, Estado: "ACTIVA" },
+        { IdCartera: 2, Nombre: "Cartera Trujillo", IdEncargado: null, Estado: "ACTIVA" },
       ])
     }
 
     const carteras = await sql`
-      SELECT * FROM "Cartera" ORDER BY "Nombre"
+      SELECT 
+        c."IdCartera",
+        c."Nombre",
+        c."IdEncargado",
+        c."FechaCreacion",
+        c."Estado",
+        u."NombreCompleto" as "EncargadoNombre"
+      FROM "Cartera" c
+      LEFT JOIN "Usuario" u ON c."IdEncargado" = u."IdUsuario"
+      ORDER BY c."Nombre"
     `
 
     return NextResponse.json(carteras)
@@ -23,15 +32,15 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
-    const { Nombre, Descripcion, Estado } = await request.json()
+    const { Nombre, IdEncargado, Estado } = await request.json()
 
     if (!sql || !(await testConnection())) {
       return NextResponse.json({ error: "Base de datos no disponible" }, { status: 503 })
     }
 
     const result = await sql`
-      INSERT INTO "Cartera" ("Nombre", "Descripcion", "Estado")
-      VALUES (${Nombre}, ${Descripcion}, ${Estado})
+      INSERT INTO "Cartera" ("Nombre", "IdEncargado", "Estado", "FechaCreacion")
+      VALUES (${Nombre}, ${IdEncargado || null}, ${Estado || 'ACTIVA'}, NOW())
       RETURNING *
     `
 

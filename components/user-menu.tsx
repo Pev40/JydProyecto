@@ -25,15 +25,23 @@ interface UserData {
 export function UserMenu() {
   const [user, setUser] = useState<UserData | null>(null)
   const [loading, setLoading] = useState(true)
+  const [fetchAttempted, setFetchAttempted] = useState(false)
   const router = useRouter()
 
   useEffect(() => {
+    // Evitar múltiples llamadas
+    if (fetchAttempted) return
+
     const fetchUser = async () => {
       try {
+        setFetchAttempted(true)
         const response = await fetch("/api/auth/me")
         if (response.ok) {
           const userData = await response.json()
           setUser(userData)
+        } else {
+          // Si la respuesta no es ok, no reintentamos
+          console.log("User not authenticated")
         }
       } catch (error) {
         console.error("Error fetching user:", error)
@@ -43,7 +51,7 @@ export function UserMenu() {
     }
 
     fetchUser()
-  }, [])
+  }, [fetchAttempted])
 
   const handleLogout = async () => {
     try {
@@ -84,12 +92,14 @@ export function UserMenu() {
 
   const getRoleColor = (role: string) => {
     switch (role) {
-      case "Administrador":
+      case "ADMIN":
         return "text-red-600"
-      case "Encargado Cobranza":
+      case "EMPLOYEE":
         return "text-corporate-blue"
-      case "Gerente":
+      case "MANAGER":
         return "text-green-600"
+      case "CLIENTE":
+        return "text-purple-600"
       default:
         return "text-corporate-gray"
     }
@@ -97,12 +107,14 @@ export function UserMenu() {
 
   const getRoleLabel = (role: string) => {
     switch (role) {
-      case "Administrador":
+      case "ADMIN":
         return "Administrador"
-      case "Encargado Cobranza":
+      case "EMPLOYEE":
         return "Encargado"
-      case "Gerente":
+      case "MANAGER":
         return "Gerente"
+      case "CLIENTE":
+        return "Cliente"
       default:
         return role
     }
@@ -138,7 +150,7 @@ export function UserMenu() {
           <User className="mr-2 h-4 w-4 text-corporate-gray" />
           <span className="text-corporate-gray">Perfil</span>
         </DropdownMenuItem>
-        {(user.NombreRol === "Administrador" || user.NombreRol === "Encargado Cobranza") && (
+        {(user.NombreRol === "ADMIN" || user.NombreRol === "EMPLOYEE") && (
           <DropdownMenuItem
             className="cursor-pointer hover:bg-corporate-blue/10"
             onClick={() => router.push("/configuracion")}
@@ -147,7 +159,7 @@ export function UserMenu() {
             <span className="text-corporate-gray">Configuración</span>
           </DropdownMenuItem>
         )}
-        {user.NombreRol === "Administrador" && (
+        {user.NombreRol === "ADMIN" && (
           <DropdownMenuItem
             className="cursor-pointer hover:bg-corporate-blue/10"
             onClick={() => router.push("/usuarios")}

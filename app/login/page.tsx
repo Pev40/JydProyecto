@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -18,34 +18,8 @@ export default function LoginPage() {
   const [error, setError] = useState("")
   const router = useRouter()
 
-  // Verificar si ya hay una sesión activa
-  useEffect(() => {
-    const checkSession = async () => {
-      try {
-        const response = await fetch("/api/auth/me")
-        if (response.ok) {
-          const user = await response.json()
-          // Redirigir según el rol
-          switch (user.NombreRol) {
-            case "Administrador":
-            case "Encargado Cobranza":
-              router.push("/")
-              break
-            case "Gerente":
-              router.push("/portal")
-              break
-            default:
-              router.push("/")
-          }
-        }
-      } catch (error) {
-        // No hay sesión activa, continuar en login
-        console.log("No hay sesión activa")
-      }
-    }
-
-    checkSession()
-  }, [router])
+  // Removemos la verificación automática para evitar bucles infinitos
+  // El usuario debe hacer login manualmente
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()

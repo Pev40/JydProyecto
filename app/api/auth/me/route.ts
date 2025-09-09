@@ -28,6 +28,7 @@ export async function GET(request: NextRequest) {
         u."Email",
         u."Estado",
         r."Nombre" as "RolNombre",
+        c."IdCliente",
         c."RazonSocial" as "ClienteNombre"
       FROM "Usuario" u
       LEFT JOIN "Rol" r ON u."IdRol" = r."IdRol"
@@ -45,7 +46,8 @@ export async function GET(request: NextRequest) {
       id: usuario.IdUsuario,
       email: usuario.Email,
       nombre: usuario.NombreCompleto,
-      NombreRol: usuario.RolNombre,
+      rol: usuario.RolNombre,
+      idCliente: usuario.IdCliente,
       clienteNombre: usuario.ClienteNombre,
     })
   } catch (error) {

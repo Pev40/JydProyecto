@@ -2,7 +2,8 @@ import { type NextRequest, NextResponse } from "next/server"
 
 export async function POST(request: NextRequest) {
   try {
-    const response = NextResponse.json({ success: true })
+    // Crear respuesta de redirección
+    const response = NextResponse.redirect(new URL("/login", request.url))
 
     // Eliminar cookie de sesión
     response.cookies.set("session", "", {
