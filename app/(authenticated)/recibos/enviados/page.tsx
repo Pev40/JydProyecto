@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -53,12 +53,7 @@ export default function RecibosEnviadosPage() {
 
   const { toast } = useToast()
 
-  useEffect(() => {
-    cargarRecibos()
-    cargarEstadisticas()
-  }, [paginacion.page, filtros])
-
-  const cargarRecibos = async () => {
+  const cargarRecibos = useCallback(async () => {
     try {
       setLoading(true)
       const params = new URLSearchParams({
@@ -92,7 +87,7 @@ export default function RecibosEnviadosPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [paginacion.page, paginacion.limit, filtros, toast])
 
   const cargarEstadisticas = async () => {
     try {
@@ -106,6 +101,11 @@ export default function RecibosEnviadosPage() {
       console.error("Error al cargar estadísticas:", error)
     }
   }
+
+  useEffect(() => {
+    cargarRecibos()
+    cargarEstadisticas()
+  }, [cargarRecibos])
 
   const handleFiltroChange = (campo: string, valor: string) => {
     setFiltros((prev) => ({ ...prev, [campo]: valor }))

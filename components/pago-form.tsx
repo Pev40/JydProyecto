@@ -17,12 +17,34 @@ import type { Cliente } from "@/lib/db"
 interface PagoFormProps {
   clientes: Cliente[]
   catalogos: {
-    bancos: any[]
-    servicios: any[]
+    bancos: Banco[]
+    servicios: Servicio[]
   }
   clienteSeleccionado?: number
-  pago?: any
+  pago?: PagoExistente
   isEditing?: boolean
+}
+
+interface Banco {
+  IdBanco: number
+  Nombre: string
+}
+
+interface Servicio {
+  IdServicio: number
+  Nombre: string
+}
+
+interface PagoExistente {
+  IdPago: number
+  IdCliente: number
+  Monto: number
+  Concepto: string
+  MedioPago: string
+  IdBanco: number | null
+  MesServicio: string
+  Observaciones?: string
+  UrlComprobante?: string
 }
 
 export function PagoForm({ clientes, catalogos, clienteSeleccionado, pago, isEditing = false }: PagoFormProps) {
@@ -51,7 +73,6 @@ export function PagoForm({ clientes, catalogos, clienteSeleccionado, pago, isEdi
 
   // Obtener servicios del cliente seleccionado
   const clienteSeleccionadoData = clientes.find((c) => c.IdCliente.toString() === formData.idCliente)
-  const serviciosCliente = clienteSeleccionadoData ? [clienteSeleccionadoData.ServicioNombre] : []
 
   // Efecto para cargar datos del compromiso si existe
   useEffect(() => {
@@ -203,7 +224,8 @@ export function PagoForm({ clientes, catalogos, clienteSeleccionado, pago, isEdi
     ]
   }
 
-  const handleInputChange = (field: string, value: any) => {
+  type FormState = typeof formData
+  const handleInputChange = <K extends keyof FormState>(field: K, value: FormState[K]) => {
     setFormData((prev) => ({
       ...prev,
       [field]: value,
@@ -334,7 +356,7 @@ export function PagoForm({ clientes, catalogos, clienteSeleccionado, pago, isEdi
               <SelectValue placeholder="Seleccione banco" />
             </SelectTrigger>
             <SelectContent>
-              {catalogos.bancos?.map((banco: any) => (
+              {catalogos.bancos?.map((banco) => (
                 <SelectItem key={banco.IdBanco} value={banco.IdBanco.toString()}>
                   {banco.Nombre}
                 </SelectItem>

@@ -7,7 +7,7 @@ import { ArrowLeft, Bell, Send, MessageSquare, Mail, Phone } from "lucide-react"
 import Link from "next/link"
 
 export default async function NotificacionesPage() {
-  const [notificaciones, clientes, catalogos] = await Promise.all([getNotificaciones(), getClientes(), getCatalogos()])
+  const [notificaciones] = await Promise.all([getNotificaciones(), getClientes(), getCatalogos()])
 
   const notificacionesHoy = notificaciones.filter(
     (n) => new Date(n.FechaEnvio).toDateString() === new Date().toDateString(),
@@ -146,8 +146,8 @@ export default async function NotificacionesPage() {
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-2">
-                            {getIconoTipo(notificacion.TipoNotificacionNombre || "")}
-                            <span>{notificacion.TipoNotificacionNombre}</span>
+                            {getIconoTipo(notificacion.TipoNotificacion || "")}
+                            <span>{notificacion.TipoNotificacion}</span>
                           </div>
                         </TableCell>
                         <TableCell>

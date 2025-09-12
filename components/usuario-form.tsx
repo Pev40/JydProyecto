@@ -14,28 +14,29 @@ import { Switch } from "@/components/ui/switch"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { ClienteSearch } from "@/components/cliente-search"
 
-interface UsuarioFormProps {
-  usuario?: {
-    IdUsuario: number
-    Email: string
-    Nombre: string
-    IdRol: number
-    IdCliente?: number
-    Activo: boolean
-  }
-  roles: Array<{
-    IdRol: number
-    NombreRol: string
-    Descripcion: string
-  }>
+interface Cliente {
+  IdCliente: number;
+  RazonSocial: string;
+  RucDni: string;
+  Estado: string;
 }
 
-export function UsuarioForm({ usuario, roles }: UsuarioFormProps) {
+interface UsuarioFormProps {
+  usuario?: {
+    Email?: string;
+    Nombre?: string;
+    IdRol?: number;
+    IdCliente?: number;
+  };
+  onSuccess?: () => void;
+}
+
+export default function UsuarioForm({ usuario, onSuccess }: UsuarioFormProps) {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
   const [success, setSuccess] = useState("")
-  const [clienteSeleccionado, setClienteSeleccionado] = useState<any>(null)
+  const [clienteSeleccionado, setClienteSeleccionado] = useState<Cliente | null>(null)
   
   const [formData, setFormData] = useState({
     email: usuario?.Email || "",
@@ -123,14 +124,14 @@ export function UsuarioForm({ usuario, roles }: UsuarioFormProps) {
       } else {
         setError(data.error || "Error al procesar la solicitud")
       }
-    } catch (error) {
+    } catch {
       setError("Error de conexión. Intenta nuevamente.")
     } finally {
       setLoading(false)
     }
   }
 
-  const handleClienteSelect = (cliente: any) => {
+  const handleClienteSelect = (cliente: Cliente | null) => {
     setClienteSeleccionado(cliente)
     setFormData({ 
       ...formData, 

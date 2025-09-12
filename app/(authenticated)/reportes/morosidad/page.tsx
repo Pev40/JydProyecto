@@ -1,4 +1,5 @@
 import { getClientes, getPagos, getCompromisosPago } from "@/lib/queries"
+import type { Cliente } from "@/lib/queries"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -333,7 +334,7 @@ export default async function AnalisisMorosidadPage() {
 }
 
 function calcularRiesgoMorosidad(
-  cliente: any,
+  cliente: Cliente,
   diasSinPago: number | null,
   compromisosVencidos: number,
   totalPagado: number,

@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: "No autorizado" }, { status: 403 })
     }
 
-    const { email, nombre, password, idRol, idCliente, activo } = await request.json()
+    const { email, nombre, password, idRol, idCliente } = await request.json()
 
     // Validaciones
     if (!email || !nombre || !password || !idRol) {

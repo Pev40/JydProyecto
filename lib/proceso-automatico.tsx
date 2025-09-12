@@ -11,6 +11,38 @@ export interface ProcesoAutomaticoResult {
   resumen: string
 }
 
+// Tipos auxiliares
+export interface ClienteCorte {
+  IdCliente: number
+  RazonSocial: string
+  Email?: string
+  Telefono?: string
+  UltimoDigitoRUC: number
+  MontoFijoMensual: number
+  Estado: string
+  ServicioNombre: string
+}
+
+export interface RecordatorioRow {
+  IdRecordatorio: number
+  IdCliente: number
+  Mensaje: string
+  TipoRecordatorio: string
+  RazonSocial: string
+  Email?: string
+  Telefono?: string
+}
+
+export interface LogRow {
+  Fecha: string
+  ClientesProcesados: number
+  ServiciosGenerados: number
+  RecordatoriosEnviados: number
+  Errores: string
+  Resumen: string
+  Estado: string
+}
+
 export class ProcesoAutomatico {
   /**
    * Proceso principal que se ejecuta diariamente a las 06:00 AM
@@ -82,7 +114,7 @@ export class ProcesoAutomatico {
   /**
    * Obtiene clientes que tienen corte SUNAT en la fecha especificada
    */
-  private static async obtenerClientesCorteHoy(fecha: Date): Promise<any[]> {
+  private static async obtenerClientesCorteHoy(fecha: Date): Promise<ClienteCorte[]> {
     if (!sql) return []
 
     try {
@@ -142,7 +174,7 @@ export class ProcesoAutomatico {
   /**
    * Genera servicios mensuales automáticos para clientes con corte hoy
    */
-  private static async generarServiciosMensuales(clientes: any[]): Promise<{
+  private static async generarServiciosMensuales(clientes: ClienteCorte[]): Promise<{
     generados: number
     errores: string[]
   }> {
@@ -221,7 +253,7 @@ export class ProcesoAutomatico {
    * Programa recordatorios para el día siguiente (mañana)
    * Se ejecuta después de generar servicios hoy
    */
-  private static async programarRecordatoriosParaManana(clientes: any[]): Promise<void> {
+  private static async programarRecordatoriosParaManana(clientes: ClienteCorte[]): Promise<void> {
     if (!sql) return
 
     try {
@@ -308,7 +340,7 @@ export class ProcesoAutomatico {
 
       console.log(`📨 Recordatorios programados para hoy: ${recordatoriosProgramados.length}`)
 
-      for (const recordatorio of recordatoriosProgramados) {
+      for (const recordatorio of recordatoriosProgramados as RecordatorioRow[]) {
         try {
           let enviado = false
 
@@ -399,7 +431,7 @@ export class ProcesoAutomatico {
   /**
    * Envía email inmediato cuando se genera un servicio mensual
    */
-  private static async enviarEmailServicioGenerado(cliente: any, mesServicio: Date): Promise<void> {
+  private static async enviarEmailServicioGenerado(cliente: ClienteCorte, mesServicio: Date): Promise<void> {
     try {
       const mesNombre = mesServicio.toLocaleDateString("es-PE", { year: "numeric", month: "long" })
 
@@ -505,7 +537,7 @@ export class ProcesoAutomatico {
   /**
    * Obtiene el historial de ejecuciones del proceso
    */
-  static async obtenerHistorialProceso(limit = 30): Promise<any[]> {
+  static async obtenerHistorialProceso(limit = 30): Promise<LogRow[]> {
     if (!sql) return []
 
     try {
@@ -516,10 +548,10 @@ export class ProcesoAutomatico {
         LIMIT ${limit}
       `
 
-      return historial.map((log: any) => ({
+      return (historial as LogRow[]).map((log) => ({
         ...log,
         Errores: JSON.parse(log.Errores || "[]"),
-      }))
+      })) as unknown as LogRow[]
     } catch (error) {
       console.error("Error obteniendo historial del proceso:", error)
       return []

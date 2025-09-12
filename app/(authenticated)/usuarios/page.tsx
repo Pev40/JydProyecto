@@ -8,6 +8,19 @@ import { UserPlus, Shield, User, Building, Edit, Trash2, Eye } from "lucide-reac
 import Link from "next/link"
 import { redirect } from "next/navigation"
 
+interface Usuario {
+  IdUsuario: number
+  Nombre: string
+  Email: string
+  NombreRol: string
+  Estado: string
+  Activo: boolean
+  UltimoAcceso: string | null
+  FechaCreacion: string
+  ClienteNombre?: string
+  IdCliente?: number
+}
+
 const sql = neon(process.env.DATABASE_URL!)
 
 // Forzar renderizado dinámico
@@ -139,7 +152,9 @@ export default async function UsuariosPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {usuarios.map((usuario: any) => (
+                  {usuarios.map((usuarioRow) => {
+                    const usuario = usuarioRow as Usuario
+                    return (
                     <TableRow key={usuario.IdUsuario}>
                       <TableCell>
                         <div className="font-medium">{usuario.Nombre}</div>
@@ -217,7 +232,8 @@ export default async function UsuariosPage() {
                         </div>
                       </TableCell>
                     </TableRow>
-                  ))}
+                    )
+                  })}
                 </TableBody>
               </Table>
             </div>

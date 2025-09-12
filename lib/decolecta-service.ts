@@ -20,7 +20,7 @@ interface DecolectaRucResponse {
   departamento: string
   es_agente_retencion: boolean
   es_buen_contribuyente: boolean
-  locales_anexos: any
+  locales_anexos: string[]
 }
 
 interface DecolectaDniResponse {

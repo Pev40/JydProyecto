@@ -71,16 +71,29 @@ export async function POST(request: NextRequest) {
       success: true,
       clienteId: result[0].IdCliente,
     })
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error creating client:", error)
 
+    // Definir interfaz para errores de base de datos
+    interface DatabaseError {
+      code?: string;
+      constraint?: string;
+      detail?: string;
+    }
+
+    const isDbError = (err: unknown): err is DatabaseError => {
+      return typeof err === 'object' && err !== null;
+    }
+
     // Manejar errores específicos de Neon DB
-    if (error?.code === '23505') {
+    if (isDbError(error) && error.code === '23505') {
       // Error de violación de restricción única
-      if (error?.constraint === 'Cliente_RucDni_key') {
+      if (error.constraint === 'Cliente_RucDni_key') {
+        const detailMatch = error.detail?.match(/\(([^)]+)\)/);
+        const rucDni = detailMatch?.[1] || 'proporcionado';
         return NextResponse.json({ 
           success: false, 
-          error: `Ya existe un cliente registrado con el RUC/DNI: ${error?.detail?.match(/\(([^)]+)\)/)?.[1] || 'proporcionado'}` 
+          error: `Ya existe un cliente registrado con el RUC/DNI: ${rucDni}` 
         }, { status: 409 })
       }
       
@@ -91,7 +104,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Manejar otros errores de validación
-    if (error?.code?.startsWith('23')) {
+    if (isDbError(error) && error.code?.startsWith('23')) {
       return NextResponse.json({ 
         success: false, 
         error: "Error de validación en los datos proporcionados" 

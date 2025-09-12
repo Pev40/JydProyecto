@@ -226,9 +226,13 @@ export class ReciboService {
 
       const reciboId = inserted[0].IdReciboEnviado as number
       return { success: true, reciboId, numeroRecibo }
-    } catch (error: any) {
+    } catch (error: unknown) {
       // Si la tabla no existe en la base de datos, devolver un error claro
-      if (error && error.code === '42P01') {
+      const isDbError = (err: unknown): err is { code: string } => {
+        return typeof err === 'object' && err !== null && 'code' in err;
+      };
+
+      if (isDbError(error) && error.code === '42P01') {
         console.error('Error generando recibo: tabla "ReciboEnviado" no existe en la BD')
         return { success: false, error: 'Tabla ReciboEnviado no encontrada en la base de datos. Ejecuta las migraciones.' }
       }
@@ -388,10 +392,15 @@ export class ReciboService {
       const total = Number(totalResult[0].total)
       const hasMore = offset + limit < total
 
+interface ReciboRaw {
+  serviciosIncluidos?: string | object;
+  [key: string]: unknown;
+}
+
       // Parsear servicios incluidos
-      const recibosConServicios = recibos.map((recibo: any) => ({
+      const recibosConServicios = recibos.map((recibo: ReciboRaw) => ({
         ...recibo,
-        serviciosIncluidos: recibo.serviciosIncluidos ? JSON.parse(recibo.serviciosIncluidos) : [],
+        serviciosIncluidos: recibo.serviciosIncluidos ? JSON.parse(recibo.serviciosIncluidos as string) : [],
       }))
 
       return {
@@ -399,8 +408,12 @@ export class ReciboService {
         total,
         hasMore,
       }
-    } catch (error: any) {
-      if (error && error.code === '42P01') {
+    } catch (error: unknown) {
+      const isDbError = (err: unknown): err is { code: string } => {
+        return typeof err === 'object' && err !== null && 'code' in err;
+      };
+
+      if (isDbError(error) && error.code === '42P01') {
         console.error('Error obteniendo recibos enviados: tabla "ReciboEnviado" no existe en la BD')
         return { recibos: [], total: 0, hasMore: false }
       }
@@ -524,7 +537,19 @@ export class ReciboService {
         },
       })
 
-      const message: any = {
+interface EmailMessage {
+  from: string;
+  to: string;
+  subject: string;
+  html: string;
+  attachments?: Array<{
+    filename: string;
+    content: Buffer;
+    contentType: string;
+  }>;
+}
+
+      const message: EmailMessage = {
         from: process.env.SMTP_FROM || smtpUser,
         to: datos.to,
         subject: datos.subject,
@@ -584,12 +609,13 @@ export class ReciboService {
 
       const reciboData = recibo[0]
       // Parsear ServiciosIncluidos de forma segura (puede ser JSONB o cadena vacía)
-      let serviciosIncluidos: any[] = []
+      let serviciosIncluidos: ServicioFacturado[] = []
       try {
         if (reciboData.ServiciosIncluidos) {
-          serviciosIncluidos = typeof reciboData.ServiciosIncluidos === 'string'
+          const parsed = typeof reciboData.ServiciosIncluidos === 'string'
             ? JSON.parse(reciboData.ServiciosIncluidos || '[]')
             : reciboData.ServiciosIncluidos
+          serviciosIncluidos = parsed as ServicioFacturado[]
         }
       } catch (parseError) {
         console.error('Error parseando ServiciosIncluidos para recibo', reciboId, 'valor:', reciboData.ServiciosIncluidos, parseError)

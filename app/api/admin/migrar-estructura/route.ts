@@ -3,6 +3,12 @@ import { NextResponse } from "next/server"
 import fs from "fs"
 import path from "path"
 
+interface ColumnInfo {
+  columna: string
+  tipo: string
+  nullable: boolean
+}
+
 export async function POST() {
   if (!sql) {
     return NextResponse.json(
@@ -41,7 +47,7 @@ export async function POST() {
     `
 
     // Organizar por tabla
-    const tablas: Record<string, any[]> = {}
+    const tablas: Record<string, ColumnInfo[]> = {}
     for (const col of verificacion) {
       if (!tablas[col.table_name]) {
         tablas[col.table_name] = []
@@ -96,7 +102,7 @@ export async function GET() {
     `
 
     // Organizar por tabla
-    const tablas: Record<string, any[]> = {}
+    const tablas: Record<string, ColumnInfo[]> = {}
     for (const col of verificacion) {
       if (!tablas[col.table_name]) {
         tablas[col.table_name] = []

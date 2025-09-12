@@ -9,21 +9,47 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Checkbox } from "@/components/ui/checkbox"
-import { toast } from "@/hooks/use-toast"
 import { Loader2, Save, Search, CheckCircle } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { useModal } from "@/components/ui/modal"
 
+interface DocumentInfo {
+  razonSocial?: string
+  direccion?: string
+  telefono?: string
+  email?: string
+  nombreCompleto?: string
+  estado?: string
+  condicion?: string
+  representanteLegal?: string
+  dni?: string
+}
+
 interface ClienteFormProps {
   catalogos: {
-    clasificaciones: any[]
-    carteras: any[]
-    servicios: any[]
-    categorias: any[]
-    bancos: any[]
-    usuarios: any[]
+    clasificaciones: { IdClasificacion: number; Codigo: string; Descripcion: string }[]
+    carteras: { IdCartera: number; Nombre: string }[]
+    servicios: { IdServicio: number; Nombre: string }[]
+    categorias: { IdCategoriaEmpresa: number; Nombre: string; Descripcion: string }[]
+    bancos: { IdBanco: number; Nombre: string }[]
+    usuarios: { IdUsuario: number; NombreCompleto: string }[]
   }
-  cliente?: any
+  cliente?: {
+    IdCliente?: number
+    RazonSocial?: string
+    NombreContacto?: string
+    RucDni?: string
+    IdClasificacion?: number
+    IdCartera?: number
+    IdEncargado?: number
+    IdServicio?: number
+    MontoFijoMensual?: string | number
+    AplicaMontoFijo?: boolean
+    IdCategoriaEmpresa?: number
+    Email?: string
+    Telefono?: string
+    Direccion?: string
+  }
   isEditing?: boolean
 }
 
@@ -31,8 +57,8 @@ export function ClienteForm({ catalogos, cliente, isEditing = false }: ClienteFo
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [consultingDocument, setConsultingDocument] = useState(false)
-  const [documentInfo, setDocumentInfo] = useState<any>(null)
-  const { Modal, showError, showSuccess, showWarning } = useModal()
+  const [documentInfo, setDocumentInfo] = useState<DocumentInfo | null>(null)
+  const { Modal, showError, showSuccess } = useModal()
   const [formData, setFormData] = useState({
     razonSocial: cliente?.RazonSocial || "",
     nombreContacto: cliente?.NombreContacto || "",
@@ -112,7 +138,7 @@ export function ClienteForm({ catalogos, cliente, isEditing = false }: ClienteFo
       } else {
         showError("Error en la consulta", result.error || "No se pudieron obtener los datos del documento. Verifique el número ingresado e intente nuevamente.")
       }
-    } catch (error) {
+    } catch {
       showError("Error de conexión", "No se pudo conectar con el servicio de consulta. Verifique su conexión a internet e intente nuevamente.")
     } finally {
       setConsultingDocument(false)
@@ -124,7 +150,7 @@ export function ClienteForm({ catalogos, cliente, isEditing = false }: ClienteFo
     setLoading(true)
 
     try {
-      const url = isEditing ? `/api/clientes/${cliente.IdCliente}` : "/api/clientes"
+      const url = isEditing && cliente ? `/api/clientes/${cliente.IdCliente}` : "/api/clientes"
       const method = isEditing ? "PUT" : "POST"
 
       const response = await fetch(url, {
@@ -134,7 +160,7 @@ export function ClienteForm({ catalogos, cliente, isEditing = false }: ClienteFo
         },
         body: JSON.stringify({
           ...formData,
-          montoFijoMensual: Number.parseFloat(formData.montoFijoMensual) || 0,
+          montoFijoMensual: Number.parseFloat(formData.montoFijoMensual.toString()) || 0,
           idClasificacion: Number.parseInt(formData.idClasificacion) || null,
           idCartera: Number.parseInt(formData.idCartera) || null,
           idEncargado: Number.parseInt(formData.idEncargado) || null,
@@ -152,7 +178,7 @@ export function ClienteForm({ catalogos, cliente, isEditing = false }: ClienteFo
             ? "Los datos del cliente han sido actualizados correctamente en el sistema."
             : "El cliente ha sido registrado exitosamente en el sistema. Será redirigido a la página del cliente.",
           () => {
-            router.push(isEditing ? `/clientes/${cliente.IdCliente}` : `/clientes/${result.clienteId}`)
+            router.push(isEditing ? `/clientes/${cliente?.IdCliente}` : `/clientes/${result.clienteId}`)
           }
         )
       } else {
@@ -184,7 +210,7 @@ export function ClienteForm({ catalogos, cliente, isEditing = false }: ClienteFo
     }
   }
 
-  const handleInputChange = (field: string, value: any) => {
+  const handleInputChange = (field: string, value: string | number | boolean) => {
     setFormData((prev) => ({
       ...prev,
       [field]: value,
@@ -341,7 +367,7 @@ export function ClienteForm({ catalogos, cliente, isEditing = false }: ClienteFo
               <SelectValue placeholder="Seleccione categoría" />
             </SelectTrigger>
             <SelectContent>
-              {catalogos.categorias?.map((categoria: any) => (
+              {catalogos.categorias?.map((categoria) => (
                 <SelectItem key={categoria.IdCategoriaEmpresa} value={categoria.IdCategoriaEmpresa.toString()}>
                   {categoria.Nombre} - {categoria.Descripcion}
                 </SelectItem>
@@ -365,7 +391,7 @@ export function ClienteForm({ catalogos, cliente, isEditing = false }: ClienteFo
                 <SelectValue placeholder="Seleccione clasificación" />
               </SelectTrigger>
               <SelectContent>
-                {catalogos.clasificaciones?.map((clasificacion: any) => (
+                {catalogos.clasificaciones?.map((clasificacion) => (
                   <SelectItem key={clasificacion.IdClasificacion} value={clasificacion.IdClasificacion.toString()}>
                     {clasificacion.Codigo} - {clasificacion.Descripcion}
                   </SelectItem>
@@ -381,7 +407,7 @@ export function ClienteForm({ catalogos, cliente, isEditing = false }: ClienteFo
                 <SelectValue placeholder="Seleccione cartera" />
               </SelectTrigger>
               <SelectContent>
-                {catalogos.carteras?.map((cartera: any) => (
+                {catalogos.carteras?.map((cartera) => (
                   <SelectItem key={cartera.IdCartera} value={cartera.IdCartera.toString()}>
                     {cartera.Nombre}
                   </SelectItem>
@@ -397,7 +423,7 @@ export function ClienteForm({ catalogos, cliente, isEditing = false }: ClienteFo
                 <SelectValue placeholder="Seleccione encargado" />
               </SelectTrigger>
               <SelectContent>
-                {catalogos.usuarios?.map((usuario: any) => (
+                {catalogos.usuarios?.map((usuario) => (
                   <SelectItem key={usuario.IdUsuario} value={usuario.IdUsuario.toString()}>
                     {usuario.NombreCompleto}
                   </SelectItem>
@@ -413,7 +439,7 @@ export function ClienteForm({ catalogos, cliente, isEditing = false }: ClienteFo
                 <SelectValue placeholder="Seleccione servicio" />
               </SelectTrigger>
               <SelectContent>
-                {catalogos.servicios?.map((servicio: any) => (
+                {catalogos.servicios?.map((servicio) => (
                   <SelectItem key={servicio.IdServicio} value={servicio.IdServicio.toString()}>
                     {servicio.Nombre}
                   </SelectItem>

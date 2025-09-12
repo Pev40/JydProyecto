@@ -1,6 +1,7 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
+import Image from "next/image"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -43,23 +44,17 @@ export default function CronogramaSunatPage() {
   const [showManager, setShowManager] = useState(false)
   const [accionManager, setAccionManager] = useState<"crear" | "copiar" | "editar">("crear")
 
-  useEffect(() => {
-    cargarAños()
-  }, [])
-
-  const cargarAños = async () => {
+  const cargarAños = useCallback(async () => {
     try {
       setLoading(true)
       const response = await fetch("/api/cronograma-sunat?accion=años")
       if (response.ok) {
         const result = await response.json()
-        setAños(result.años)
-
+        setAños(result.años || [])
         // Seleccionar el año más reciente por defecto
-        if (result.años.length > 0) {
+        if (result.años && result.años.length > 0) {
           const añoReciente = result.años[0].Año
           setAñoSeleccionado(añoReciente)
-          cargarEstadisticas(añoReciente)
         }
       }
     } catch (error) {
@@ -67,7 +62,11 @@ export default function CronogramaSunatPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
+
+  useEffect(() => {
+    cargarAños()
+  }, [cargarAños])
 
   const cargarEstadisticas = async (año: number) => {
     try {
@@ -153,9 +152,11 @@ export default function CronogramaSunatPage() {
           </CardHeader>
           <CardContent className="p-6">
             <div className="text-center">
-              <img
+              <Image
                 src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/image-ek0me4yqMoRlqe7OdmsOzjkhrTmB48.png"
                 alt="Cronograma SUNAT 2025"
+                width={800}
+                height={600}
                 className="mx-auto max-w-full h-auto rounded-lg shadow-lg"
               />
               <p className="text-sm text-gray-600 mt-4">

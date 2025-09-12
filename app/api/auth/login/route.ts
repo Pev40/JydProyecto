@@ -12,7 +12,7 @@ export async function POST(request: NextRequest) {
       const parsed = JSON.parse(body)
       email = parsed.email
       password = parsed.password
-    } catch (parseError) {
+    } catch {
       return NextResponse.json({ error: "Formato de datos inválido" }, { status: 400 })
     }
 

@@ -4,6 +4,7 @@ import { useState, useEffect } from "react"
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { TrendingUp } from "lucide-react"
+import type { TooltipProps, ValueType, NameType } from "recharts"
 
 interface PagoData {
   mes: string
@@ -46,13 +47,13 @@ export function PagosChart() {
     return `S/ ${value.toLocaleString("es-PE")}`
   }
 
-  const CustomTooltip = ({ active, payload, label }: any) => {
+  const CustomTooltip = ({ active, payload, label }: TooltipProps<ValueType, NameType>) => {
     if (active && payload && payload.length) {
       return (
         <div className="bg-white p-3 border rounded-lg shadow-lg">
           <p className="font-medium">{`${label} 2024`}</p>
-          <p className="text-blue-600">{`Cantidad: ${payload[0].value} pagos`}</p>
-          <p className="text-green-600">{`Monto: ${formatCurrency(payload[1].value)}`}</p>
+          <p className="text-blue-600">{`Cantidad: ${payload[0].value as number} pagos`}</p>
+          <p className="text-green-600">{`Monto: ${formatCurrency(payload[1].value as number)}`}</p>
         </div>
       )
     }

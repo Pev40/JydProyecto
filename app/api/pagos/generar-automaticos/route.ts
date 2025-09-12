@@ -59,7 +59,7 @@ export async function POST(request: NextRequest) {
         }
 
         // Crear el pago automático
-        const nuevoPago = await sql`
+        await sql`
           INSERT INTO "Pago" (
             "IdCliente", 
             "Fecha", 

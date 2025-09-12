@@ -15,14 +15,28 @@ import type { Cliente } from "@/lib/db"
 interface NotificacionFormProps {
   clientes: Cliente[]
   catalogos: {
-    tiposNotificacion: any[]
+    tiposNotificacion: TipoNotificacion[]
   }
+}
+
+interface TipoNotificacion {
+  IdTipoNotificacion: number
+  Nombre: string
+}
+
+type FormState = {
+  idCliente: string
+  idTipoNotificacion: string
+  contenido: string
+  programarEnvio: boolean
+  fechaProgramada: string
+  horaProgramada: string
 }
 
 export function NotificacionForm({ clientes, catalogos }: NotificacionFormProps) {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<FormState>({
     idCliente: "",
     idTipoNotificacion: "",
     contenido: "",
@@ -92,7 +106,7 @@ export function NotificacionForm({ clientes, catalogos }: NotificacionFormProps)
     }
   }
 
-  const handleInputChange = (field: string, value: any) => {
+  const handleInputChange = <K extends keyof FormState>(field: K, value: FormState[K]) => {
     setFormData((prev) => ({
       ...prev,
       [field]: value,
@@ -154,7 +168,7 @@ export function NotificacionForm({ clientes, catalogos }: NotificacionFormProps)
               <SelectValue placeholder="Seleccione tipo" />
             </SelectTrigger>
             <SelectContent>
-              {catalogos.tiposNotificacion.map((tipo: any) => (
+              {catalogos.tiposNotificacion.map((tipo) => (
                 <SelectItem key={tipo.IdTipoNotificacion} value={tipo.IdTipoNotificacion.toString()}>
                   <div className="flex items-center gap-2">
                     {getIconoTipo(tipo.Nombre)}

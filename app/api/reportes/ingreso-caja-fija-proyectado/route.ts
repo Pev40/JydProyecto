@@ -14,25 +14,46 @@ export async function GET(request: NextRequest) {
     // Obtener datos del reporte usando la función SQL
     const result = await sql`SELECT * FROM ObtenerReporteCajaFijaProyectado(${año})`
 
-    const datos = result.map((row: any) => {
+    type Row = {
+      ProyeccionesJSON?: string
+      Concepto?: string
+      CodigoCliente?: string
+      FechaInicioServicio?: string
+      FechaCorte?: string
+      SaldoAnterior?: string | number
+      ImporteServicioFijo?: string | number
+      ImporteVariable?: string | number
+      ImporteAcumulado?: string | number
+      TipoComprobante?: string
+      MedioDocumento?: string
+      VariableDescripcion?: string
+      FechaUltimaConsulta?: string
+      FechaUltimoPago?: string
+      EstadoDeuda?: string
+    }
+
+    const datos = (result as Row[]).map((row) => {
       // Parsear las proyecciones JSON
-      let mesesProyectados = {}
-      try {
-        mesesProyectados = row.ProyeccionesJSON ? JSON.parse(row.ProyeccionesJSON) : {}
-      } catch (e) {
-        console.warn("Error parsing projections JSON:", e)
-        mesesProyectados = {}
-      }
+      const mesesProyectados: Record<string, number> = (() => {
+        if (!row.ProyeccionesJSON) return {}
+        try {
+          const parsed = JSON.parse(row.ProyeccionesJSON) as Record<string, number>
+          return parsed ?? {}
+        } catch (e) {
+          console.warn("Error parsing projections JSON:", e)
+          return {}
+        }
+      })()
 
       return {
         concepto: row.Concepto || "",
         codigoCliente: row.CodigoCliente || "",
         fechaInicio: row.FechaInicioServicio ? new Date(row.FechaInicioServicio).toLocaleDateString("es-PE") : "",
         fechaCorte: row.FechaCorte || "",
-        saldoAnterior: Number.parseFloat(row.SaldoAnterior || 0),
-        importeServicio: Number.parseFloat(row.ImporteServicioFijo || 0),
-        importeVariable: Number.parseFloat(row.ImporteVariable || 0),
-        importeAcumulado: Number.parseFloat(row.ImporteAcumulado || 0),
+        saldoAnterior: Number.parseFloat(String(row.SaldoAnterior || 0)),
+        importeServicio: Number.parseFloat(String(row.ImporteServicioFijo || 0)),
+        importeVariable: Number.parseFloat(String(row.ImporteVariable || 0)),
+        importeAcumulado: Number.parseFloat(String(row.ImporteAcumulado || 0)),
         tipoComprobante: row.TipoComprobante || "",
         medioDoc: row.MedioDocumento || "",
         variableDescripcion: row.VariableDescripcion || "",
@@ -109,7 +130,7 @@ export async function POST(request: NextRequest) {
     const mesesAbreviados = ["ENE", "FEB", "MAR", "ABR", "MAY", "JUN", "JUL", "AGO", "SEP", "OCT", "NOV", "DIC"]
 
     // Crear datos para la hoja principal
-    const excelData: any[] = []
+    const excelData: (string | number)[][] = []
 
     // Encabezado principal
     excelData.push([
@@ -150,7 +171,24 @@ export async function POST(request: NextRequest) {
     excelData.push(headers)
 
     // Datos de clientes
-    datos.forEach((cliente: any) => {
+    type ClienteRow = {
+      concepto: string
+      codigoCliente: string
+      fechaInicio: string
+      fechaCorte: string
+      saldoAnterior: number
+      importeServicio: number
+      importeVariable: number
+      importeAcumulado: number
+      tipoComprobante: string
+      medioDoc: string
+      variableDescripcion: string
+      fechaConsulta: string
+      fechaPago: string
+      mesesProyectados: Record<string, number>
+    }
+
+    datos.forEach((cliente: ClienteRow) => {
       const fila = [
         cliente.concepto,
         cliente.codigoCliente,
@@ -208,15 +246,15 @@ export async function POST(request: NextRequest) {
     XLSX.utils.book_append_sheet(wb, ws, "Caja Fija Proyectado")
 
     // Crear hoja de resumen
-    const resumenData: any[] = []
+    const resumenData: (string | number)[][] = []
     resumenData.push(["RESUMEN INGRESOS DEL MES", "TOTAL"])
     resumenData.push([])
 
-    resumenIngresos.forEach((item: any) => {
+    resumenIngresos.forEach((item) => {
       resumenData.push([item.mes, item.total])
     })
 
-    const totalAnual = resumenIngresos.reduce((sum: number, item: any) => sum + item.total, 0)
+    const totalAnual = resumenIngresos.reduce((sum: number, item) => sum + item.total, 0)
     resumenData.push(["TOTAL ANUAL", totalAnual])
 
     const wsResumen = XLSX.utils.aoa_to_sheet(resumenData)

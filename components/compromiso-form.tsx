@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { useModal } from "@/components/ui/modal"
-import { Loader2, Save, Calendar, DollarSign } from "lucide-react"
+import { Loader2, Save } from "lucide-react"
 
 interface CompromisoFormProps {
   cliente: {
@@ -16,7 +16,12 @@ interface CompromisoFormProps {
     RazonSocial: string
     MontoFijoMensual: number
   }
-  compromiso?: any
+  compromiso?: {
+    IdCompromisoPago: number
+    FechaCompromiso?: string
+    MontoCompromiso?: number
+    Observaciones?: string
+  }
   isEditing?: boolean
 }
 
@@ -96,7 +101,8 @@ export function CompromisoForm({ cliente, compromiso, isEditing = false }: Compr
     }
   }
 
-  const handleInputChange = (field: string, value: any) => {
+  type FormState = typeof formData
+  const handleInputChange = <K extends keyof FormState>(field: K, value: FormState[K]) => {
     setFormData((prev) => ({
       ...prev,
       [field]: value,

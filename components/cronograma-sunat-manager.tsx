@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { toast } from "@/hooks/use-toast"
-import { Plus, Copy, Upload, Loader2, Calendar, FileSpreadsheet } from "lucide-react"
+import { Plus, Copy, Upload, Loader2, Calendar } from "lucide-react"
 import { useRouter } from "next/navigation"
 
 interface AñoCronograma {
@@ -40,10 +40,10 @@ export function CronogramaSunatManager({
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [dialogOpen, setDialogOpen] = useState(true)
-  const [accion, setAccion] = useState<"crear" | "copiar" | "importar">(accionInicial === "editar" ? "crear" : accionInicial)
+  const [accion] = useState<"crear" | "copiar" | "importar">(accionInicial === "editar" ? "crear" : accionInicial)
   const [año, setAño] = useState(añoSeleccionado || new Date().getFullYear() + 1)
   const [añoOrigen, setAñoOrigen] = useState(añoSeleccionado || new Date().getFullYear())
-  const [añosDisponibles, setAñosDisponibles] = useState<number[]>(años.map(a => a.Año))
+  const [añosDisponibles] = useState<number[]>(años.map(a => a.Año))
 
   useEffect(() => {
     setDialogOpen(true)
@@ -76,7 +76,7 @@ export function CronogramaSunatManager({
     setLoading(true)
 
     try {
-      const requestBody: any = { año }
+      const requestBody: { año: number; accion?: string; añoOrigen?: number } = { año }
 
       switch (accion) {
         case "crear":

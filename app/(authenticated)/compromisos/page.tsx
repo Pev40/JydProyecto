@@ -6,7 +6,7 @@ import { ArrowLeft, Plus, Calendar, CheckCircle, Clock, AlertTriangle, DollarSig
 import Link from "next/link"
 
 export default async function CompromisosPage() {
-  const [compromisos, clientes] = await Promise.all([getCompromisosPago(), getClientes()])
+  const [compromisos] = await Promise.all([getCompromisosPago(), getClientes()])
 
   const compromisosHoy = compromisos.filter(
     (c) => new Date(c.FechaCompromiso).toDateString() === new Date().toDateString(),

@@ -87,7 +87,8 @@ export async function POST(request: NextRequest) {
           ) as has_tipo
         `
 
-        if ((cols as any)[0]?.has_tipo) {
+        type ColsRow = { has_tipo: boolean }
+        if ((cols as ColsRow[])[0]?.has_tipo) {
           for (const mesServicio of mesesServicios) {
             await sql`
               INSERT INTO "DetallePagoServicio" (
@@ -199,7 +200,7 @@ export async function GET(request: NextRequest) {
     const offset = (page - 1) * limit
 
     const whereConditions = []
-    const queryParams = []
+    const queryParams: string[] = []
 
     if (clienteId) {
       whereConditions.push(`p."IdCliente" = ${clienteId}`)
@@ -254,7 +255,7 @@ export async function GET(request: NextRequest) {
     `
 
     const totalResult = await sql.unsafe(queryTotal)
-    const total = Number.parseInt((totalResult as any)[0].total)
+    const total = Number.parseInt((totalResult as unknown as { total: string }[])[0].total)
 
     return NextResponse.json({
       success: true,

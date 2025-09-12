@@ -8,6 +8,16 @@ import { ArrowLeft, Edit, User, Mail, Shield, Building, Calendar, Clock, Activit
 import Link from "next/link"
 import { redirect, notFound } from "next/navigation"
 
+interface Permiso {
+  NombrePermiso: string
+  Descripcion: string
+  Modulo: string
+}
+
+interface PermisosPorModulo {
+  [modulo: string]: Permiso[]
+}
+
 const sql = neon(process.env.DATABASE_URL!)
 
 // Forzar renderizado dinámico
@@ -56,13 +66,14 @@ export default async function UsuarioDetallePage({ params }: { params: { id: str
   `
 
   // Agrupar permisos por módulo
-  const permisosPorModulo = permisos.reduce((acc: any, permiso: any) => {
+  const permisosPorModulo = permisos.reduce((acc: PermisosPorModulo, permisoRow) => {
+    const permiso = permisoRow as Permiso
     if (!acc[permiso.Modulo]) {
       acc[permiso.Modulo] = []
     }
     acc[permiso.Modulo].push(permiso)
     return acc
-  }, {})
+  }, {} as PermisosPorModulo)
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -173,11 +184,11 @@ export default async function UsuarioDetallePage({ params }: { params: { id: str
               <CardContent>
                 {Object.keys(permisosPorModulo).length > 0 ? (
                   <div className="space-y-4">
-                    {Object.entries(permisosPorModulo).map(([modulo, permisos]: [string, any]) => (
+                    {Object.entries(permisosPorModulo).map(([modulo, permisos]: [string, Permiso[]]) => (
                       <div key={modulo}>
                         <h4 className="font-medium text-gray-900 mb-2">{modulo}</h4>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                          {permisos.map((permiso: any) => (
+                          {permisos.map((permiso: Permiso) => (
                             <div key={permiso.NombrePermiso} className="flex items-center gap-2 p-2 bg-gray-50 rounded">
                               <div className="w-2 h-2 bg-green-500 rounded-full"></div>
                               <div>
@@ -274,7 +285,7 @@ export default async function UsuarioDetallePage({ params }: { params: { id: str
                 <Button
                   variant="outline"
                   className="w-full justify-start bg-transparent"
-                  disabled={usuario.IdUsuario === user.IdUsuario}
+                  disabled={usuario.IdUsuario === user.id}
                 >
                   <Activity className="h-4 w-4 mr-2" />
                   {usuario.Activo ? "Desactivar" : "Activar"} Usuario

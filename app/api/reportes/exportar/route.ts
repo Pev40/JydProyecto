@@ -6,7 +6,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { tipo, formato, filtros } = body
 
-    let datos: any[] = []
+    let datos: unknown[] = []
 
     switch (tipo) {
       case "consolidado":
@@ -56,9 +56,29 @@ export async function POST(request: NextRequest) {
   }
 }
 
-async function generarReporteConsolidado(filtros: any) {
+type FiltrosConsolidado = {
+  clasificacion?: string
+  cartera?: number
+  servicio?: number
+}
+
+async function generarReporteConsolidado(filtros: FiltrosConsolidado = {}) {
   if (!sql) {
     return []
+  }
+
+  let whereClause = "WHERE 1=1"
+
+  if (filtros.clasificacion) {
+    whereClause += ` AND cl."Codigo" = '${filtros.clasificacion}'`
+  }
+
+  if (filtros.cartera) {
+    whereClause += ` AND c."IdCartera" = ${filtros.cartera}`
+  }
+
+  if (filtros.servicio) {
+    whereClause += ` AND c."IdServicio" = ${filtros.servicio}`
   }
 
   const query = `
@@ -90,6 +110,7 @@ async function generarReporteConsolidado(filtros: any) {
     LEFT JOIN "Pago" p ON c."IdCliente" = p."IdCliente" AND p."Estado" = 'CONFIRMADO'
     LEFT JOIN "Notificacion" n ON c."IdCliente" = n."IdCliente"
     LEFT JOIN "CompromisoPago" cp ON c."IdCliente" = cp."IdCliente"
+    ${whereClause}
     GROUP BY c."IdCliente", cl."Codigo", cl."Descripcion", car."Nombre", s."Nombre"
     ORDER BY c."RazonSocial"
   `
@@ -97,9 +118,19 @@ async function generarReporteConsolidado(filtros: any) {
   return await sql.query(query)
 }
 
-async function generarReporteFlujoCaja(filtros: any) {
+async function generarReporteFlujoCaja(filtros: { cartera?: number; servicio?: number } = {}) {
   if (!sql) {
     return []
+  }
+
+  let whereClause = "WHERE 1=1"
+
+  if (filtros.cartera) {
+    whereClause += ` AND c."IdCartera" = ${filtros.cartera}`
+  }
+
+  if (filtros.servicio) {
+    whereClause += ` AND c."IdServicio" = ${filtros.servicio}`
   }
 
   const query = `
@@ -114,6 +145,7 @@ async function generarReporteFlujoCaja(filtros: any) {
       ) as "SaldoPendiente"
     FROM "Cliente" c
     LEFT JOIN "Pago" p ON c."IdCliente" = p."IdCliente" AND p."Estado" = 'CONFIRMADO'
+    ${whereClause}
     GROUP BY c."UltimoDigitoRUC"
     ORDER BY c."UltimoDigitoRUC"
   `
@@ -121,9 +153,29 @@ async function generarReporteFlujoCaja(filtros: any) {
   return await sql.query(query)
 }
 
-async function generarReporteMorosidad(filtros: any) {
+type FiltrosMorosidad = {
+  clasificacion?: string
+  cartera?: number
+  servicio?: number
+}
+
+async function generarReporteMorosidad(filtros: FiltrosMorosidad = {}) {
   if (!sql) {
     return []
+  }
+
+  let whereClause = "WHERE cl.\"Codigo\" IN ('B', 'C')"
+
+  if (filtros.clasificacion) {
+    whereClause += ` AND cl."Codigo" = '${filtros.clasificacion}'`
+  }
+
+  if (filtros.cartera) {
+    whereClause += ` AND c."IdCartera" = ${filtros.cartera}`
+  }
+
+  if (filtros.servicio) {
+    whereClause += ` AND c."IdServicio" = ${filtros.servicio}`
   }
 
   const query = `
@@ -148,7 +200,7 @@ async function generarReporteMorosidad(filtros: any) {
     LEFT JOIN "Clasificacion" cl ON c."IdClasificacion" = cl."IdClasificacion"
     LEFT JOIN "Pago" p ON c."IdCliente" = p."IdCliente" AND p."Estado" = 'CONFIRMADO'
     LEFT JOIN "CompromisoPago" cp ON c."IdCliente" = cp."IdCliente" AND cp."Estado" = 'PENDIENTE' AND cp."FechaCompromiso" < CURRENT_DATE
-    WHERE cl."Codigo" IN ('B', 'C')
+    ${whereClause}
     GROUP BY c."IdCliente", cl."Codigo", cl."Descripcion"
     ORDER BY "SaldoPendiente" DESC
   `
@@ -156,18 +208,23 @@ async function generarReporteMorosidad(filtros: any) {
   return await sql.query(query)
 }
 
-async function generarReporteClientes(filtros: any) {
+type FiltrosClientes = {
+  clasificacion?: string
+  cartera?: number
+}
+
+async function generarReporteClientes(filtros: FiltrosClientes = {}) {
   if (!sql) {
     return []
   }
 
   let whereClause = "WHERE 1=1"
 
-  if (filtros?.clasificacion) {
+  if (filtros.clasificacion) {
     whereClause += ` AND cl."Codigo" = '${filtros.clasificacion}'`
   }
 
-  if (filtros?.cartera) {
+  if (filtros.cartera) {
     whereClause += ` AND c."IdCartera" = ${filtros.cartera}`
   }
 
@@ -199,7 +256,7 @@ async function generarReporteClientes(filtros: any) {
   return await sql.query(query)
 }
 
-async function generarExcel(datos: any[], tipo: string): Promise<Buffer> {
+async function generarExcel(datos: unknown[], tipo: string): Promise<Buffer> {
   // Simulación de generación de Excel
   // En producción se usaría una librería como 'exceljs' o 'xlsx'
 
@@ -208,7 +265,7 @@ async function generarExcel(datos: any[], tipo: string): Promise<Buffer> {
 
   datos.forEach((row) => {
     const values = headers.map((header) => {
-      const value = row[header] || ""
+      const value = (row as Record<string, unknown>)[header] ?? ""
       return typeof value === "string" ? `"${value.replace(/"/g, '""')}"` : value
     })
     csvContent += values.join(",") + "\n"
@@ -217,15 +274,15 @@ async function generarExcel(datos: any[], tipo: string): Promise<Buffer> {
   return Buffer.from(csvContent, "utf-8")
 }
 
-function generarCSV(datos: any[]): string {
+function generarCSV(datos: unknown[]): string {
   if (datos.length === 0) return ""
 
-  const headers = Object.keys(datos[0])
+  const headers = Object.keys(datos[0] as object)
   let csvContent = headers.join(",") + "\n"
 
   datos.forEach((row) => {
     const values = headers.map((header) => {
-      const value = row[header] || ""
+      const value = (row as Record<string, unknown>)[header] ?? ""
       return typeof value === "string" ? `"${value.replace(/"/g, '""')}"` : value
     })
     csvContent += values.join(",") + "\n"

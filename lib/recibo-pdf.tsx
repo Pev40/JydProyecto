@@ -4,7 +4,25 @@ import { renderToBuffer } from '@react-pdf/renderer'
 import path from 'path'
 import fs from 'fs'
 
-export async function renderReciboPdfBuffer(reciboData: any, servicios: any[] = []) {
+interface ReciboData {
+  Concepto?: string;
+  Monto?: number | string;
+  RazonSocial?: string;
+  RucDni?: string;
+  NumeroRecibo?: string;
+  FechaEnvio?: string;
+  Fecha?: string;
+}
+
+interface Servicio {
+  nombre?: string;
+  NombreServicio?: string;
+  descripcion?: string;
+  monto?: number | string;
+  Monto?: number | string;
+}
+
+export async function renderReciboPdfBuffer(reciboData: ReciboData, servicios: Servicio[] = []) {
   if (!servicios || servicios.length === 0) {
     servicios = [
       {
@@ -15,7 +33,7 @@ export async function renderReciboPdfBuffer(reciboData: any, servicios: any[] = 
     ]
   }
 
-  const subtotal = servicios.reduce((s: number, it: any) => s + Number(it.monto ?? it.Monto ?? 0), 0)
+  const subtotal = servicios.reduce((s: number, it: Servicio) => s + Number(it.monto ?? it.Monto ?? 0), 0)
 
   const candidate1 = path.join(process.cwd(), 'public', 'LOGOJYD.png')
   const candidate2 = path.join(process.cwd(), 'public', 'placeholder-logo.png')
@@ -29,7 +47,7 @@ export async function renderReciboPdfBuffer(reciboData: any, servicios: any[] = 
       const mime = chosen.toLowerCase().endsWith('.svg') ? 'image/svg+xml' : 'image/png'
       logoDataUri = `data:${mime};base64,${buf.toString('base64')}`
     }
-  } catch (e) {
+  } catch {
     logoDataUri = null
   }
 
@@ -48,6 +66,8 @@ export async function renderReciboPdfBuffer(reciboData: any, servicios: any[] = 
             <Text style={{ fontSize: 10 }}>37531 Ávila, Ávila</Text>
           </View>
           <View style={{ width: 80, height: 80, borderRadius: 40, overflow: 'hidden' }}>
+            {/* @react-pdf/renderer Image component doesn't support alt prop */}
+            {/* eslint-disable-next-line jsx-a11y/alt-text */}
             {logoDataUri ? <Image src={logoDataUri} style={{ width: 80, height: 80 }} /> : <View style={{ width: 80, height: 80, backgroundColor: '#ccc' }} />}
           </View>
         </View>
@@ -78,7 +98,7 @@ export async function renderReciboPdfBuffer(reciboData: any, servicios: any[] = 
           <Text style={{ width: '20%', fontSize: 10, fontWeight: 'bold', color: '#22325b', textAlign: 'right' }}>IMPORTE</Text>
         </View>
 
-        {servicios.map((it: any, idx: number) => {
+        {servicios.map((it: Servicio, idx: number) => {
           const nombre = it.nombre || it.NombreServicio || it.descripcion || ''
           const monto = Number(it.monto ?? it.Monto ?? 0)
           return (
@@ -100,7 +120,7 @@ export async function renderReciboPdfBuffer(reciboData: any, servicios: any[] = 
     </Document>
   )
 
-  const buffer = await renderToBuffer(Doc as any)
+  const buffer = await renderToBuffer(Doc as React.ReactElement)
   return buffer
 }
 

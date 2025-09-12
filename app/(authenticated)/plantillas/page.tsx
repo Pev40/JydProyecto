@@ -7,7 +7,7 @@ import { ArrowLeft, Plus, Edit, MessageSquare, Copy } from "lucide-react"
 import Link from "next/link"
 
 export default async function PlantillasPage() {
-  const [plantillas, catalogos] = await Promise.all([getPlantillasMensajes(), getCatalogos()])
+  const [plantillas] = await Promise.all([getPlantillasMensajes(), getCatalogos()])
 
   const getClasificacionBadge = (codigo: string, color: string) => {
     const colorClass =

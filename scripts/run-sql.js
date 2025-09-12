@@ -1,7 +1,7 @@
-require("dotenv").config({ path: ".env.local" })
-const { neon } = require("@neondatabase/serverless")
-const fs = require("fs")
-const path = require("path")
+import { neon } from "@neondatabase/serverless"
+import "dotenv/config"
+import fs from "fs"
+import path from "path"
 
 async function runSqlScript(scriptName) {
   try {

@@ -7,7 +7,7 @@ import { ArrowLeft, Upload, Download, Eye, FileText, ImageIcon, CheckCircle, X }
 import Link from "next/link"
 
 export default async function ComprobantesPage() {
-  const [pagos, clientes] = await Promise.all([getPagos(), getClientes()])
+  const [pagos] = await Promise.all([getPagos(), getClientes()])
 
   const pagosConComprobante = pagos.filter((p) => p.UrlComprobante)
   const pagosSinComprobante = pagos.filter((p) => !p.UrlComprobante)

@@ -2,7 +2,7 @@ import { sql } from "@/lib/db"
 import { NotificationService } from "@/lib/notification-service"
 import { type NextRequest, NextResponse } from "next/server"
 
-export async function POST(request: NextRequest) {
+export async function POST(_request: NextRequest) {
   if (!sql) {
     return NextResponse.json(
       { success: false, error: "Base de datos no configurada. Configure DATABASE_URL." },
@@ -66,7 +66,14 @@ export async function POST(request: NextRequest) {
 
     let recordatoriosEnviados = 0
     let erroresEnvio = 0
-    const resultados: any[] = []
+    interface ResultadoEnvio {
+      cliente: string
+      estado: "OMITIDO" | "ENVIADO" | "ERROR"
+      razon?: string
+      tipo?: string
+      destinatario?: string
+    }
+    const resultados: ResultadoEnvio[] = []
 
     for (const cliente of clientesParaRecordatorio) {
       try {

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -29,14 +29,8 @@ export default function IngresosMensualesPage() {
   const [ingresosMensuales, setIngresosMensuales] = useState<IngresoMensual[]>([])
   const [ledgerClientes, setLedgerClientes] = useState<LedgerCliente[]>([])
   const [mesSeleccionado, setMesSeleccionado] = useState(new Date().toISOString().slice(0, 7))
-  const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    cargarDatos()
-  }, [mesSeleccionado])
-
-  const cargarDatos = async () => {
-    setLoading(true)
+  const cargarDatos = useCallback(async () => {
     try {
       const [ingresosRes, ledgerRes] = await Promise.all([
         fetch("/api/ingresos-mensuales"),
@@ -50,10 +44,12 @@ export default function IngresosMensualesPage() {
       setLedgerClientes(ledger)
     } catch (error) {
       console.error("Error cargando datos:", error)
-    } finally {
-      setLoading(false)
     }
-  }
+  }, [mesSeleccionado])
+
+  useEffect(() => {
+    cargarDatos()
+  }, [cargarDatos])
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("es-PE", {

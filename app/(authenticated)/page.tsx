@@ -12,7 +12,6 @@ import {
   FileText,
   Target,
   Activity,
-  CheckCircle,
   Clock,
   ArrowUpRight,
 } from "lucide-react"

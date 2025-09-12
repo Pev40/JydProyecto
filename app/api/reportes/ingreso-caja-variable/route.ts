@@ -34,7 +34,7 @@ export async function GET(request: NextRequest) {
       WHERE "Año" = $1
     `
 
-    const params: any[] = [Number.parseInt(año)]
+    const params: (string | number)[] = [Number.parseInt(año)]
 
     if (mes && mes !== "") {
       query += ` AND "Mes" = $${params.length + 1}`
@@ -51,9 +51,38 @@ export async function GET(request: NextRequest) {
   const result = await sql.query(query, params)
 
     // Agrupar por mes
-    const datosPorMes: Record<string, any[]> = {}
+    type Row = {
+      Mes: number
+      NombreMes: string
+      Cliente: string
+      Fecha: string
+      DetalleServicio?: string
+      NumeroRecibo?: string
+      Medio?: string
+      Banco?: string
+      MontoDevengado?: string | number
+      MontoPagado?: string | number
+      SaldoPendiente?: string | number
+      Observaciones?: string
+      Estado: string
+    }
 
-    result.forEach((row: any) => {
+    const datosPorMes: Record<string, {
+      mes: string
+      cliente: string
+      fecha: string
+      detalleServicio: string
+      numeroRecibo: string
+      medio: string
+      banco: string
+      devengado: number
+      pagado: number
+      saldoPendiente: number
+      observaciones: string
+      estado: string
+    }[]> = {}
+
+    (result as Row[]).forEach((row) => {
       const nombreMes = row.NombreMes || `MES_${row.Mes}`
       if (!datosPorMes[nombreMes]) {
         datosPorMes[nombreMes] = []
@@ -67,9 +96,9 @@ export async function GET(request: NextRequest) {
         numeroRecibo: row.NumeroRecibo || "",
         medio: row.Medio || "",
         banco: row.Banco || "",
-        devengado: Number.parseFloat(row.MontoDevengado || 0),
-        pagado: Number.parseFloat(row.MontoPagado || 0),
-        saldoPendiente: Number.parseFloat(row.SaldoPendiente || 0),
+        devengado: Number.parseFloat(String(row.MontoDevengado || 0)),
+        pagado: Number.parseFloat(String(row.MontoPagado || 0)),
+        saldoPendiente: Number.parseFloat(String(row.SaldoPendiente || 0)),
         observaciones: row.Observaciones || "",
         estado: row.Estado,
       })
@@ -77,9 +106,12 @@ export async function GET(request: NextRequest) {
 
     // Calcular totales
     const totales = {
-      devengado: result.reduce((sum: number, row: any) => sum + Number.parseFloat(row.MontoDevengado || 0), 0),
-      pagado: result.reduce((sum: number, row: any) => sum + Number.parseFloat(row.MontoPagado || 0), 0),
-      saldoPendiente: result.reduce((sum: number, row: any) => sum + Number.parseFloat(row.SaldoPendiente || 0), 0),
+      devengado: (result as Row[]).reduce((sum, row) => sum + Number.parseFloat(String(row.MontoDevengado || 0)), 0),
+      pagado: (result as Row[]).reduce((sum, row) => sum + Number.parseFloat(String(row.MontoPagado || 0)), 0),
+      saldoPendiente: (result as Row[]).reduce(
+        (sum, row) => sum + Number.parseFloat(String(row.SaldoPendiente || 0)),
+        0,
+      ),
     }
 
     return NextResponse.json({
@@ -102,10 +134,10 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const { datos, totales, filtros } = await request.json()
+    const { datos, filtros } = await request.json()
 
     const wb = XLSX.utils.book_new()
-    const excelData: any[] = []
+    const excelData: (string | number)[][] = []
 
     // Encabezado principal
     excelData.push(["J&D CONSULTORES DE NEGOCIOS", "", "", "", "INGRESO DE CAJA VARIABLE", "", "", "", "", "", ""])
@@ -151,7 +183,7 @@ export async function POST(request: NextRequest) {
     mesesOrdenados.forEach((mes) => {
       if (datos[mes] && datos[mes].length > 0) {
         // Datos del mes
-        datos[mes].forEach((item: any) => {
+        datos[mes].forEach((item) => {
           excelData.push([
             mes,
             item.cliente,
@@ -172,9 +204,9 @@ export async function POST(request: NextRequest) {
         })
 
         // Subtotal del mes
-        const subtotalDevengado = datos[mes].reduce((sum: number, item: any) => sum + item.devengado, 0)
-        const subtotalPagado = datos[mes].reduce((sum: number, item: any) => sum + item.pagado, 0)
-        const subtotalSaldoPendiente = datos[mes].reduce((sum: number, item: any) => sum + item.saldoPendiente, 0)
+        const subtotalDevengado = datos[mes].reduce((sum: number, item) => sum + item.devengado, 0)
+        const subtotalPagado = datos[mes].reduce((sum: number, item) => sum + item.pagado, 0)
+        const subtotalSaldoPendiente = datos[mes].reduce((sum: number, item) => sum + item.saldoPendiente, 0)
 
         excelData.push([
           `TOTAL ${mes}`,

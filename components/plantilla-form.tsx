@@ -15,10 +15,24 @@ import { Loader2, Save, Eye } from "lucide-react"
 
 interface PlantillaFormProps {
   catalogos: {
-    clasificaciones: any[]
+    clasificaciones: Clasificacion[]
   }
-  plantilla?: any
+  plantilla?: Plantilla
   isEditing?: boolean
+}
+
+interface Clasificacion {
+  IdClasificacion: number
+  Codigo: string
+  Descripcion: string
+  Color: string
+}
+
+interface Plantilla {
+  IdPlantillaMensaje: number
+  Nombre: string
+  IdClasificacion: number
+  Contenido: string
 }
 
 export function PlantillaForm({ catalogos, plantilla, isEditing = false }: PlantillaFormProps) {
@@ -73,7 +87,8 @@ export function PlantillaForm({ catalogos, plantilla, isEditing = false }: Plant
     }
   }
 
-  const handleInputChange = (field: string, value: any) => {
+  type FormState = typeof formData
+  const handleInputChange = <K extends keyof FormState>(field: K, value: FormState[K]) => {
     setFormData((prev) => ({
       ...prev,
       [field]: value,

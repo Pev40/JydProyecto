@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -17,7 +17,6 @@ import {
   Clock,
   Users,
   FileText,
-  Settings,
   CheckCircle,
   AlertTriangle,
 } from "lucide-react"
@@ -50,6 +49,13 @@ interface CronogramaDetalle {
   NombreMes: string
 }
 
+interface CronogramaItem {
+  Mes: number
+  DigitoRUC: number
+  Dia: number
+  MesVencimiento: number
+}
+
 export default function CronogramaSunatConfigPage() {
   const [años, setAños] = useState<AñoCronograma[]>([])
   const [añoSeleccionado, setAñoSeleccionado] = useState<number | null>(null)
@@ -74,19 +80,15 @@ export default function CronogramaSunatConfigPage() {
     { digitos: "BC", descripcion: "Buenos Contribuyentes" },
   ]
 
-  useEffect(() => {
-    cargarAños()
-  }, [])
-
-  const cargarAños = async () => {
+  const cargarAños = useCallback(async () => {
     try {
       setLoading(true)
       const response = await fetch("/api/cronograma-sunat?accion=años")
       if (response.ok) {
         const result = await response.json()
-        setAños(result.años)
+        setAños(result.años || [])
         // Seleccionar el año más reciente por defecto
-        if (result.años.length > 0) {
+        if (result.años && result.años.length > 0) {
           const añoReciente = result.años[0].Año
           setAñoSeleccionado(añoReciente)
           cargarEstadisticas(añoReciente)
@@ -98,7 +100,11 @@ export default function CronogramaSunatConfigPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
+
+  useEffect(() => {
+    cargarAños()
+  }, [cargarAños])
 
   const cargarEstadisticas = async (año: number) => {
     try {
@@ -119,9 +125,9 @@ export default function CronogramaSunatConfigPage() {
         const result = await response.json()
         // Convertir el objeto agrupado por mes a array
         const detalle: CronogramaDetalle[] = []
-        Object.entries(result.cronograma).forEach(([mes, items]: [string, any]) => {
+        Object.entries(result.cronograma).forEach(([mes, items]) => {
           if (Array.isArray(items)) {
-            items.forEach(item => {
+            (items as CronogramaItem[]).forEach(item => {
               // Calcular el año de vencimiento: diciembre (mes 12) vence en enero del año siguiente
               const añoVencimiento = item.Mes === 12 ? año + 1 : año
               
@@ -420,7 +426,7 @@ export default function CronogramaSunatConfigPage() {
                   <h4 className="font-semibold text-blue-900 mb-2">📋 Información importante:</h4>
                   <ul className="text-sm text-blue-800 space-y-1">
                     <li>• Los dígitos se agrupan según las disposiciones de SUNAT</li>
-                    <li>• "BC" corresponde a Buenos Contribuyentes</li>
+                    <li>• &quot;BC&quot; corresponde a Buenos Contribuyentes</li>
                     <li>• El día de corte determina cuándo se genera el servicio mensual</li>
                     <li>• El mes de vencimiento es cuando vence la obligación tributaria</li>
                   </ul>

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from "recharts"
+import type { TooltipProps, ValueType, NameType } from "recharts"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Users } from "lucide-react"
 
@@ -9,12 +10,6 @@ interface ClienteData {
   name: string
   value: number
   color: string
-}
-
-const COLORS = {
-  "Al día": "#10b981",
-  "Deuda leve": "#f59e0b",
-  Morosos: "#ef4444",
 }
 
 export function ClientesChart() {
@@ -45,14 +40,14 @@ export function ClientesChart() {
     }
   }
 
-  const CustomTooltip = ({ active, payload }: any) => {
-    if (active && payload && payload.length) {
-      const data = payload[0].payload
+  const CustomTooltip = ({ active, payload }: TooltipProps<ValueType, NameType>) => {
+    const datum = (payload && payload[0]?.payload) as (ClienteData & { total: number }) | undefined
+    if (active && datum) {
       return (
         <div className="bg-white p-3 border rounded-lg shadow-lg">
-          <p className="font-medium">{data.name}</p>
-          <p style={{ color: data.color }}>
-            {`${data.value} clientes (${((data.value / data.total) * 100).toFixed(1)}%)`}
+          <p className="font-medium">{datum.name}</p>
+          <p style={{ color: datum.color }}>
+            {`${datum.value} clientes (${((datum.value / datum.total) * 100).toFixed(1)}%)`}
           </p>
         </div>
       )

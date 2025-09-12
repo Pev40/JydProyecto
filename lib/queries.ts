@@ -455,8 +455,42 @@ export async function getActividadesRecientes(): Promise<ActividadReciente[]> {
       LIMIT 2
     `
 
+interface ActividadPago {
+  id: number;
+  tipo: string;
+  descripcion: string;
+  monto: string;
+  fecha: string;
+  estado: string;
+}
+
+interface ActividadCliente {
+  id: number;
+  tipo: string;
+  descripcion: string;
+  fecha: string;
+  estado: string;
+}
+
+interface ActividadNotificacion {
+  id: number;
+  tipo: string;
+  descripcion: string;
+  fecha: string;
+  estado: string;
+}
+
+interface ActividadCompromiso {
+  id: number;
+  tipo: string;
+  descripcion: string;
+  monto: string;
+  fecha: string;
+  estado: string;
+}
+
     // Combinar todas las actividades
-    actividades.push(...pagosRecientes.map((p: any) => ({
+    actividades.push(...(pagosRecientes as ActividadPago[]).map((p) => ({
       id: p.id,
       tipo: p.tipo as 'pago',
       descripcion: p.descripcion,
@@ -465,7 +499,7 @@ export async function getActividadesRecientes(): Promise<ActividadReciente[]> {
       estado: p.estado
     })))
 
-    actividades.push(...clientesRecientes.map((c: any) => ({
+    actividades.push(...(clientesRecientes as ActividadCliente[]).map((c) => ({
       id: c.id,
       tipo: c.tipo as 'cliente',
       descripcion: c.descripcion,
@@ -473,7 +507,7 @@ export async function getActividadesRecientes(): Promise<ActividadReciente[]> {
       estado: c.estado
     })))
 
-    actividades.push(...notificacionesRecientes.map((n: any) => ({
+    actividades.push(...(notificacionesRecientes as ActividadNotificacion[]).map((n) => ({
       id: n.id,
       tipo: n.tipo as 'notificacion',
       descripcion: n.descripcion,
@@ -481,7 +515,7 @@ export async function getActividadesRecientes(): Promise<ActividadReciente[]> {
       estado: n.estado
     })))
 
-    actividades.push(...compromisosRecientes.map((cp: any) => ({
+    actividades.push(...(compromisosRecientes as ActividadCompromiso[]).map((cp) => ({
       id: cp.id,
       tipo: cp.tipo as 'compromiso',
       descripcion: cp.descripcion,
@@ -620,8 +654,16 @@ export async function getCompromisosPago(clienteId?: number): Promise<Compromiso
   }
 }
 
+interface PlantillaMensaje {
+  IdPlantillaMensaje: number;
+  Nombre: string;
+  Contenido: string;
+  IdClasificacion: number;
+  ClasificacionNombre: string;
+}
+
 // Función para obtener plantillas de mensajes
-export async function getPlantillasMensajes(): Promise<any[]> {
+export async function getPlantillasMensajes(): Promise<PlantillaMensaje[]> {
   if (!sql) {
     throw new Error("Base de datos no disponible")
   }
@@ -639,15 +681,24 @@ export async function getPlantillasMensajes(): Promise<any[]> {
       ORDER BY pm."Nombre"
     `
 
-    return result as any[]
+    return result as PlantillaMensaje[]
   } catch (error) {
     console.error("Error fetching message templates:", error)
     throw new Error("Error al obtener plantillas de mensajes")
   }
 }
 
+interface CronogramaSunat {
+  IdCronograma: number;
+  Año: number;
+  Mes: number;
+  DigitoRUC: string;
+  Dia: number;
+  MesVencimiento: number;
+}
+
 // Función para obtener cronograma SUNAT por año
-export async function getCronogramaSunatPorAño(año: number): Promise<any[]> {
+export async function getCronogramaSunatPorAño(año: number): Promise<CronogramaSunat[]> {
   if (!sql) {
     throw new Error("Base de datos no disponible")
   }
@@ -666,7 +717,7 @@ export async function getCronogramaSunatPorAño(año: number): Promise<any[]> {
       ORDER BY "Mes", "DigitoRUC"
     `
 
-    return result as any[]
+    return result as CronogramaSunat[]
   } catch (error) {
     console.error("Error fetching SUNAT cronograma:", error)
     throw new Error("Error al obtener cronograma SUNAT")

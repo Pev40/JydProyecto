@@ -1,7 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { sql } from "@/lib/db"
 
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   try {
     if (!sql) {
       return NextResponse.json({ error: "Base de datos no disponible" }, { status: 500 })
@@ -43,10 +43,23 @@ export async function GET(request: NextRequest) {
     `
 
     // Obtener muestra de datos de caja fija
-    const muestraCajaFija = await sql`
-      SELECT * FROM ObtenerReporteCajaFijaProyectado(${new Date().getFullYear()})
-      LIMIT 3
-    `
+    // Intentar con función; si falla, caer a la vista alternativa si existe
+    let muestraCajaFija
+    try {
+      muestraCajaFija = await sql`
+        SELECT * FROM ObtenerReporteCajaFijaProyectado(${new Date().getFullYear()})
+        LIMIT 3
+      `
+    } catch (_e) {
+      try {
+        muestraCajaFija = await sql`
+          SELECT * FROM VistaReporteCajaFijaProyectado
+          LIMIT 3
+        `
+      } catch (_ignored) {
+        muestraCajaFija = []
+      }
+    }
 
     return NextResponse.json({
       verificacion: {

@@ -22,14 +22,31 @@ export default async function FlujoCajaPage({ searchParams }: PageProps) {
   const periodo = searchParams.periodo || "mes"
 
   // Generar reporte según el tipo seleccionado
-  let reporteData: any[] = []
+  type ReporteItem = {
+    categoria: string
+    cantidadClientes: number
+    totalPagado: number
+    saldoPendiente: number
+    porcentajeCobranza: number
+    promedioPorCliente: number
+  }
+  let reporteData: ReporteItem[] = []
 
   if (tipo === "digito") {
     // Flujo de caja por dígito RUC
     reporteData = generarReportePorDigito(clientes, pagos)
   } else if (tipo === "cartera") {
     // Flujo de caja por cartera
-    reporteData = generarReportePorCartera(clientes, pagos, catalogos.carteras)
+    reporteData = generarReportePorCartera(
+      clientes,
+      pagos,
+      catalogos.carteras
+        .filter((c) => typeof c.IdCartera === "number" && typeof c.Nombre === "string")
+        .map((c) => ({
+          IdCartera: c.IdCartera,
+          Nombre: c.Nombre,
+        }))
+    )
   }
 
   const totalIngresos = reporteData.reduce((sum, item) => sum + item.totalPagado, 0)
@@ -216,7 +233,21 @@ export default async function FlujoCajaPage({ searchParams }: PageProps) {
   )
 }
 
-function generarReportePorDigito(clientes: any[], pagos: any[]) {
+type Cliente = {
+  IdCliente: number
+  UltimoDigitoRUC: number
+  SaldoPendiente?: number
+  IdCartera?: number
+  // agrega otros campos si es necesario
+}
+
+type Pago = {
+  IdCliente: number
+  Monto: number | string
+  // agrega otros campos si es necesario
+}
+
+function generarReportePorDigito(clientes: Cliente[], pagos: Pago[]) {
   const reporte = []
 
   for (let digito = 0; digito <= 9; digito++) {
@@ -242,7 +273,11 @@ function generarReportePorDigito(clientes: any[], pagos: any[]) {
   return reporte.sort((a, b) => b.totalPagado - a.totalPagado)
 }
 
-function generarReportePorCartera(clientes: any[], pagos: any[], carteras: any[]) {
+function generarReportePorCartera(
+  clientes: Cliente[],
+  pagos: Pago[],
+  carteras: { IdCartera: number; Nombre: string }[]
+) {
   const reporte = []
 
   for (const cartera of carteras) {

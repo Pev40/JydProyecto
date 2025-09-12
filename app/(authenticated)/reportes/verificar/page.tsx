@@ -7,10 +7,21 @@ import { Badge } from "@/components/ui/badge"
 import { CheckCircle, XCircle, AlertCircle, RefreshCw } from "lucide-react"
 import Link from "next/link"
 
+interface MuestraCajaVariable {
+  Cliente: string
+  NombreMes: string
+  MontoPagado: string | number
+}
+
+interface MuestraCajaFija {
+  Concepto: string
+  ImporteServicioFijo: string | number
+}
+
 interface VerificacionData {
   verificacion: {
-    cajaVariable: { total: number; muestra: any[] }
-    cajaFija: { total: number; muestra: any[] }
+    cajaVariable: { total: number; muestra: MuestraCajaVariable[] }
+    cajaFija: { total: number; muestra: MuestraCajaFija[] }
     proyecciones: { total: number }
     clientesFijos: { total: number }
     pagosRecientes: { total: number }
@@ -36,7 +47,7 @@ export default function VerificarReportesPage() {
         const errorResult = await response.json()
         setError(errorResult.error || "Error al cargar datos")
       }
-    } catch (err) {
+    } catch {
       setError("Error de conexión")
     } finally {
       setLoading(false)
@@ -219,7 +230,7 @@ export default function VerificarReportesPage() {
                         <div key={index} className="p-3 bg-gray-50 rounded text-sm">
                           <div className="font-medium">{item.Cliente}</div>
                           <div className="text-gray-600">
-                            {item.NombreMes} - S/ {Number.parseFloat(item.MontoPagado || 0).toLocaleString("es-PE")}
+                            {item.NombreMes} - S/ {Number.parseFloat(item.MontoPagado?.toString() || "0").toLocaleString("es-PE")}
                           </div>
                         </div>
                       ))}
@@ -241,7 +252,7 @@ export default function VerificarReportesPage() {
                         <div key={index} className="p-3 bg-gray-50 rounded text-sm">
                           <div className="font-medium">{item.Concepto}</div>
                           <div className="text-gray-600">
-                            Servicio: S/ {Number.parseFloat(item.ImporteServicioFijo || 0).toLocaleString("es-PE")}
+                            Servicio: S/ {Number.parseFloat(item.ImporteServicioFijo?.toString() || "0").toLocaleString("es-PE")}
                           </div>
                         </div>
                       ))}

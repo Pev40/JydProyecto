@@ -74,8 +74,25 @@ export async function GET(request: NextRequest) {
       ORDER BY "Mes" ASC, "DigitoRUC" ASC
     `
 
+interface CronogramaItem {
+  IdCronograma: number;
+  Año: number;
+  Mes: number;
+  NombreMes: string;
+  DigitoRUC: string;
+  Dia: number;
+  MesVencimiento: number;
+  FechaCreacion: string;
+  UsuarioCreacion: string;
+  Estado: string;
+}
+
+interface CronogramaPorMes {
+  [nombreMes: string]: CronogramaItem[];
+}
+
     // Agrupar por mes
-    const cronogramaPorMes = cronograma.reduce((acc: any, item: any) => {
+    const cronogramaPorMes = (cronograma as CronogramaItem[]).reduce((acc: CronogramaPorMes, item: CronogramaItem) => {
       if (!acc[item.NombreMes]) {
         acc[item.NombreMes] = []
       }
@@ -255,16 +272,18 @@ export async function POST(request: NextRequest) {
       default:
         return NextResponse.json({ success: false, error: "Acción no válida" }, { status: 400 })
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error en operación cronograma SUNAT:", error)
 
     // Manejar errores específicos de las stored procedures
-    if (error.message?.includes("Ya existe un cronograma")) {
-      return NextResponse.json({ success: false, error: error.message }, { status: 409 })
-    }
+    if (error instanceof Error) {
+      if (error.message?.includes("Ya existe un cronograma")) {
+        return NextResponse.json({ success: false, error: error.message }, { status: 409 })
+      }
 
-    if (error.message?.includes("No existe cronograma")) {
-      return NextResponse.json({ success: false, error: error.message }, { status: 404 })
+      if (error.message?.includes("No existe cronograma")) {
+        return NextResponse.json({ success: false, error: error.message }, { status: 404 })
+      }
     }
 
     return NextResponse.json({ success: false, error: "Error en operación del cronograma SUNAT" }, { status: 500 })

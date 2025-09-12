@@ -12,8 +12,8 @@ import { Filter, Search, X } from "lucide-react"
 
 interface ClientesFiltrosProps {
   catalogos: {
-    clasificaciones: any[]
-    carteras: any[]
+    clasificaciones: Clasificacion[]
+    carteras: Cartera[]
   }
   searchParams: {
     ultimoDigito?: string
@@ -21,6 +21,17 @@ interface ClientesFiltrosProps {
     cartera?: string
     search?: string
   }
+}
+
+interface Clasificacion {
+  IdClasificacion: number
+  Codigo: string
+  Descripcion: string
+}
+
+interface Cartera {
+  IdCartera: number
+  Nombre: string
 }
 
 export function ClientesFiltros({ catalogos, searchParams }: ClientesFiltrosProps) {
@@ -102,7 +113,7 @@ export function ClientesFiltros({ catalogos, searchParams }: ClientesFiltrosProp
             <div className="relative">
               <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
               <Input
-                placeholder="Razón social, RUC, contacto..."
+                placeholder={"Razón social, RUC, contacto..."}
                 className="pl-10"
                 value={filtros.search}
                 onChange={(e) => handleInputChange("search", e.target.value)}
@@ -189,7 +200,7 @@ export function ClientesFiltros({ catalogos, searchParams }: ClientesFiltrosProp
               <div className="flex flex-wrap gap-2 mt-2">
                 {filtros.search.trim() && (
                   <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs">
-                    Búsqueda: "{filtros.search}"
+                    Búsqueda: &quot;{filtros.search}&quot;
                   </span>
                 )}
                 {filtros.ultimoDigito !== "ALL" && (

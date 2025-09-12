@@ -10,10 +10,33 @@ import { Textarea } from "@/components/ui/textarea"
 import { toast } from "@/hooks/use-toast"
 import { Loader2, CheckCircle, XCircle, Send, MessageSquare, Mail, Settings } from "lucide-react"
 
+interface NotificacionConfig {
+  whatsapp_activo: boolean
+  email_activo: boolean
+  whatsapp_token?: string
+  email_config?: object
+  whatsapp?: {
+    active: boolean
+  }
+  evolution?: {
+    baseUrl: string
+    instanceKey: string
+  }
+  email?: {
+    active: boolean
+  }
+  smtp?: {
+    host: string
+    port: number
+    user: string
+    secure: boolean
+  }
+}
+
 export default function ConfiguracionNotificaciones() {
   const [loading, setLoading] = useState(false)
   const [testLoading, setTestLoading] = useState(false)
-  const [configuracion, setConfiguracion] = useState<any>(null)
+  const [configuracion, setConfiguracion] = useState<NotificacionConfig | null>(null)
   const [testData, setTestData] = useState({
     telefono: "",
     email: "",
@@ -39,7 +62,7 @@ export default function ConfiguracionNotificaciones() {
           variant: "destructive",
         })
       }
-    } catch (error) {
+    } catch {
       toast({
         title: "Error",
         description: "Error al cargar la configuración",
@@ -86,7 +109,7 @@ export default function ConfiguracionNotificaciones() {
           variant: "destructive",
         })
       }
-    } catch (error) {
+    } catch {
       toast({
         title: "Error",
         description: "Error al probar WhatsApp",
@@ -134,7 +157,7 @@ export default function ConfiguracionNotificaciones() {
           variant: "destructive",
         })
       }
-    } catch (error) {
+    } catch {
       toast({
         title: "Error",
         description: "Error al probar Email",

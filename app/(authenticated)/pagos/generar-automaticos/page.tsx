@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -18,29 +18,37 @@ interface ClienteParaGenerar {
   seleccionado: boolean
 }
 
+interface ResultadoGeneracion {
+  exito: boolean
+  mensaje: string
+  pagosGenerados?: number
+  montoTotal?: number
+  detalles?: Record<string, unknown>
+}
+
 export default function GenerarAutomaticosPage() {
   const [clientes, setClientes] = useState<ClienteParaGenerar[]>([])
   const [mesGeneracion, setMesGeneracion] = useState(new Date().toISOString().slice(0, 7))
   const [loading, setLoading] = useState(false)
   const [generando, setGenerando] = useState(false)
-  const [resultado, setResultado] = useState<any>(null)
+  const [resultado, setResultado] = useState<ResultadoGeneracion | null>(null)
 
-  useEffect(() => {
-    cargarClientes()
-  }, [mesGeneracion])
-
-  const cargarClientes = async () => {
+  const cargarClientes = useCallback(async () => {
     setLoading(true)
     try {
       const response = await fetch(`/api/pagos/generar-automaticos/preview?mes=${mesGeneracion}`)
       const data = await response.json()
-      setClientes(data.map((c: any) => ({ ...c, seleccionado: true })))
+      setClientes(data.map((c: ClienteParaGenerar) => ({ ...c, seleccionado: true })))
     } catch (error) {
       console.error("Error cargando clientes:", error)
     } finally {
       setLoading(false)
     }
-  }
+  }, [mesGeneracion])
+
+  useEffect(() => {
+    cargarClientes()
+  }, [cargarClientes])
 
   const toggleCliente = (idCliente: number) => {
     setClientes((prev) => prev.map((c) => (c.IdCliente === idCliente ? { ...c, seleccionado: !c.seleccionado } : c)))
@@ -77,7 +85,7 @@ export default function GenerarAutomaticosPage() {
       const resultado = await response.json()
       setResultado(resultado)
 
-      if (resultado.success) {
+      if (resultado.exito) {
         // Recargar la lista
         await cargarClientes()
       }
@@ -193,23 +201,23 @@ export default function GenerarAutomaticosPage() {
         {resultado && (
           <Card className="mb-6">
             <CardHeader>
-              <CardTitle className={`flex items-center gap-2 ${resultado.success ? "text-green-600" : "text-red-600"}`}>
+              <CardTitle className={`flex items-center gap-2 ${resultado.exito ? "text-green-600" : "text-red-600"}`}>
                 <AlertCircle className="h-5 w-5" />
                 Resultado de la Generación
               </CardTitle>
             </CardHeader>
             <CardContent>
-              {resultado.success ? (
+              {resultado.exito ? (
                 <div className="text-green-600">
                   <p className="font-medium">✅ Generación exitosa</p>
                   <p>
-                    Se generaron {resultado.pagosGenerados} pagos por un total de {formatCurrency(resultado.montoTotal)}
+                    Se generaron {resultado.pagosGenerados} pagos por un total de {formatCurrency(resultado.montoTotal ?? 0)}
                   </p>
                 </div>
               ) : (
                 <div className="text-red-600">
                   <p className="font-medium">❌ Error en la generación</p>
-                  <p>{resultado.error}</p>
+                  <p>{resultado.mensaje}</p>
                 </div>
               )}
             </CardContent>

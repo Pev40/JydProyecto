@@ -42,7 +42,15 @@ export async function GET(
     const r = data[0]
 
     // Servicios incluidos (puede ser JSONB o string)
-    let servicios: Array<any> = []
+    type Servicio = {
+      nombre?: string
+      NombreServicio?: string
+      descripcion?: string
+      monto?: number
+      Monto?: number
+      tipo?: string
+    }
+    let servicios: Servicio[] = []
     if (r.ServiciosIncluidos) {
       try {
         servicios = typeof r.ServiciosIncluidos === 'string' ? JSON.parse(r.ServiciosIncluidos) : r.ServiciosIncluidos
@@ -63,7 +71,10 @@ export async function GET(
       ]
     }
 
-    const subtotal = servicios.reduce((s: number, it: any) => s + (Number(it.monto || it.Monto || 0)), 0)
+    const subtotal = servicios.reduce((s: number, it: unknown) => {
+      const item = it as { monto?: number; Monto?: number }
+      return s + Number(item.monto ?? item.Monto ?? 0)
+    }, 0)
 
     // Logo path (public folder) -> leer y convertir a data URI para evitar fetch
     const candidate1 = path.join(process.cwd(), 'public', 'LOGOJYD.png')
@@ -142,9 +153,10 @@ export async function GET(
             <Text style={{ width: "20%", fontSize: 10, fontWeight: "bold", color: "#22325b", textAlign: "right" }}>IMPORTE</Text>
           </View>
           {/* Table Rows from servicios */}
-          {servicios.map((it: any, idx: number) => {
-            const nombre = it.nombre || it.NombreServicio || it.descripcion || ''
-            const monto = Number(it.monto ?? it.Monto ?? 0)
+          {servicios.map((it: unknown, idx: number) => {
+            const item = it as { nombre?: string; NombreServicio?: string; descripcion?: string; monto?: number; Monto?: number }
+            const nombre = item.nombre || item.NombreServicio || item.descripcion || ''
+            const monto = Number(item.monto ?? item.Monto ?? 0)
             return (
               <View key={idx} style={{ flexDirection: "row", marginBottom: 2 }}>
                 <Text style={{ width: "10%", fontSize: 10 }}>{idx + 1}</Text>
@@ -179,7 +191,7 @@ export async function GET(
 
     // Render a PDF buffer
     const { renderToBuffer } = await import("@react-pdf/renderer")
-    const pdfBuffer = await renderToBuffer(Doc as any)
+    const pdfBuffer = await renderToBuffer(Doc)
     return new NextResponse(new Uint8Array(pdfBuffer), {
       status: 200,
       headers: {

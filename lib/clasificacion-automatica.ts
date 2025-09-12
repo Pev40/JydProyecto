@@ -1,5 +1,12 @@
 import { sql } from "./db"
 
+interface CronogramaItem {
+  FechaVencimiento: string | Date;
+  [key: string]: unknown;
+}
+
+// interface eliminada por no uso
+
 export interface ClienteClasificacion {
   IdCliente: number
   RazonSocial: string
@@ -56,7 +63,6 @@ export class ClasificacionAutomatica {
       const resultados: ClienteClasificacion[] = []
       const fechaActual = new Date()
       const añoActual = fechaActual.getFullYear()
-      const mesActual = fechaActual.getMonth() + 1
 
       for (const cliente of clientes) {
         // Calcular meses desde el registro hasta ahora
@@ -64,7 +70,7 @@ export class ClasificacionAutomatica {
         const mesesTranscurridos = this.calcularMesesTranscurridos(fechaRegistro, fechaActual)
 
         // Obtener cronograma SUNAT para este cliente
-        const cronograma = await this.obtenerCronogramaSunatCliente(cliente.UltimoDigitoRUC, añoActual, mesActual)
+        const cronograma = await this.obtenerCronogramaSunatCliente(cliente.UltimoDigitoRUC, añoActual)
 
         // Calcular monto esperado (servicio fijo mensual)
         const montoEsperadoFijo = cliente.MontoFijoMensual * mesesTranscurridos
@@ -231,7 +237,7 @@ export class ClasificacionAutomatica {
   /**
    * Obtiene el cronograma SUNAT para un cliente específico
    */
-  private static async obtenerCronogramaSunatCliente(ultimoDigitoRUC: number, año: number, mes: number) {
+  private static async obtenerCronogramaSunatCliente(ultimoDigitoRUC: number, año: number) {
     if (!sql) return []
 
     try {
@@ -269,13 +275,13 @@ export class ClasificacionAutomatica {
   /**
    * Calcula el próximo vencimiento según cronograma SUNAT
    */
-  private static calcularProximoVencimiento(ultimoDigitoRUC: number, cronograma: any[]): Date | null {
+  private static calcularProximoVencimiento(ultimoDigitoRUC: number, cronograma: CronogramaItem[]): Date | null {
     if (cronograma.length === 0) return null
 
     try {
       const hoy = new Date()
       const fechas = cronograma
-        .map((r: any) => new Date(r.FechaVencimiento))
+        .map((r: CronogramaItem) => new Date(r.FechaVencimiento))
         .filter((d: Date) => !Number.isNaN(d.getTime()))
         .sort((a: Date, b: Date) => a.getTime() - b.getTime())
 
@@ -317,7 +323,17 @@ export class ClasificacionAutomatica {
         LIMIT ${limit}
       `
 
-      return historial.map((h: any) => ({
+      type HistorialRow = {
+        IdCliente: number
+        ClasificacionAnterior?: string
+        ClasificacionNueva: string
+        Motivo: string
+        FechaCambio: string | Date
+        MesesDeuda: number
+        MontoDeuda: string | number
+      }
+
+      return (historial as HistorialRow[]).map((h) => ({
         IdCliente: h.IdCliente,
         ClasificacionAnterior: h.ClasificacionAnterior || "N/A",
         ClasificacionNueva: h.ClasificacionNueva,

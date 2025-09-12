@@ -1,6 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { ReciboActions } from "@/components/recibo-actions"
 
 async function getRecibos() {
   const res = await fetch(`/api/recibos`, { cache: "no-store" })
@@ -8,14 +7,14 @@ async function getRecibos() {
   return data.recibos || []
 }
 
-import { getPagos, getClientes } from "@/lib/queries"
+import { getPagos } from "@/lib/queries"
 import { Button } from "@/components/ui/button"
-import { ArrowLeft, FileText, Download, Printer, Send } from "lucide-react"
+import { ArrowLeft, FileText, Download, Printer } from "lucide-react"
 import { GenerateButtons } from "@/components/recibos-generate-buttons"
 import Link from "next/link"
 
 export default async function RecibosPage() {
-  const [pagos, clientes] = await Promise.all([getPagos(), getClientes()])
+  const [pagos] = await Promise.all([getPagos()])
 
   const pagosConfirmados = pagos.filter((p) => p.Estado === "CONFIRMADO")
 

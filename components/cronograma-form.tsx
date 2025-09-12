@@ -2,12 +2,11 @@
 
 import type React from "react"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { toast } from "@/hooks/use-toast"
 import { Loader2, Save } from "lucide-react"
@@ -31,7 +30,7 @@ export function CronogramaForm({ año, cronograma }: CronogramaFormProps) {
   const [loading, setLoading] = useState(false)
 
   // Función auxiliar para calcular el año de vencimiento
-  const calcularAñoVencimiento = (mesObligacion: number, mesVencimiento: number) => {
+  const calcularAñoVencimiento = (mesObligacion: number) => {
     // Diciembre (mes 12) siempre vence en enero del año siguiente
     if (mesObligacion === 12) {
       return año + 1
@@ -184,7 +183,7 @@ export function CronogramaForm({ año, cronograma }: CronogramaFormProps) {
                   {digitos.map((digito) => {
                     const key = `${mesIndex + 1}-${digito.valor}`
                     const data = cronogramaData[key]
-                    const añoVencimiento = calcularAñoVencimiento(mesIndex + 1, data.MesVencimiento)
+                    const añoVencimiento = calcularAñoVencimiento(mesIndex + 1)
 
                     return (
                       <TableCell key={digito.valor} className="text-center p-2">

@@ -150,9 +150,11 @@ export default async function PortalPage() {
   const clienteData = clienteResult[0]
   
   // Calcular estadísticas
-  const totalPagado = pagos.reduce((sum: number, pago: any) => sum + Number.parseFloat(pago.Monto), 0)
+  type PagoRow = { IdPago: number; Monto: string | number; Fecha: string; MedioPago: string }
+  type NotifRow = { IdNotificacion: number; TipoNotificacion: string; FechaEnvio: string; Mensaje: string }
+  const totalPagado = (pagos as PagoRow[]).reduce((sum, pago) => sum + Number.parseFloat(String(pago.Monto)), 0)
   const currentYear = new Date().getFullYear()
-  const pagosEsteAno = pagos.filter((pago: any) => new Date(pago.Fecha).getFullYear() === currentYear)
+  const pagosEsteAno = (pagos as PagoRow[]).filter((pago) => new Date(pago.Fecha).getFullYear() === currentYear)
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -269,7 +271,7 @@ export default async function PortalPage() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {pagos.slice(0, 5).map((pago: any) => (
+                {(pagos as PagoRow[]).slice(0, 5).map((pago) => (
                   <div key={pago.IdPago} className="flex items-center justify-between p-3 border rounded-lg">
                     <div>
                       <p className="font-medium">S/ {Number.parseFloat(pago.Monto).toFixed(2)}</p>
@@ -291,7 +293,7 @@ export default async function PortalPage() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {notificaciones.map((notif: any) => (
+                {(notificaciones as NotifRow[]).map((notif) => (
                   <div key={notif.IdNotificacion} className="p-3 border rounded-lg">
                     <div className="flex items-center justify-between mb-2">
                       <Badge variant="outline">{notif.TipoNotificacion}</Badge>
@@ -316,7 +318,7 @@ export default async function PortalPage() {
                 {Array.from({ length: 12 }, (_, i) => {
                   const mes = i + 1
                   const nombreMes = new Date(currentYear, i, 1).toLocaleDateString("es-ES", { month: "long" })
-                  const pagoMes = pagosEsteAno.find((pago: any) => new Date(pago.Fecha).getMonth() === i)
+                  const pagoMes = pagosEsteAno.find((pago) => new Date(pago.Fecha).getMonth() === i)
 
                   return (
                     <div key={mes} className="flex items-center justify-between">
