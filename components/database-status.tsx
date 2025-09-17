@@ -25,7 +25,7 @@ export function DatabaseStatus() {
           connected: data.connected,
           message: data.message,
         })
-      } catch (error) {
+      } catch (_error) {
         setStatus({
           connected: false,
           message: "Error de conexión",

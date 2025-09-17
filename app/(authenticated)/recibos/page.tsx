@@ -1,12 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 
-async function getRecibos() {
-  const res = await fetch(`/api/recibos`, { cache: "no-store" })
-  const data = await res.json()
-  return data.recibos || []
-}
-
 import { getPagos } from "@/lib/queries"
 import { Button } from "@/components/ui/button"
 import { ArrowLeft, FileText, Download, Printer } from "lucide-react"

@@ -1,75 +1,59 @@
-import { cookies } from "next/headers"
-import { redirect } from "next/navigation"
-import { sql } from "@/lib/db"
+import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
+import { apiClient } from "./api-client";
 
 export interface User {
-  id: number
-  email: string
-  nombre: string
-  rol: string
-  idCliente?: number
-  clienteNombre?: string
+  id: number;
+  email: string;
+  nombre: string;
+  rol: string;
+  idCliente?: number;
+  clienteNombre?: string;
 }
 
 export interface Session {
-  userId: number
-  email: string
-  nombre: string
-  rol: string
-  timestamp: number
+  userId: number;
+  email: string;
+  nombre: string;
+  rol: string;
+  timestamp: number;
 }
 
 export async function getCurrentUser(): Promise<User | null> {
   try {
-    const cookieStore = await cookies()
-    const sessionCookie = cookieStore.get("session")
+    const cookieStore = await cookies();
+    const sessionCookie = cookieStore.get("session");
 
-    if (!sessionCookie || !sql) {
-      return null
+    if (!sessionCookie) {
+      return null;
     }
 
-    const session = JSON.parse(sessionCookie.value)
+    const session = JSON.parse(sessionCookie.value);
 
     if (!session.userId) {
-      return null
+      return null;
     }
 
-    // Verificar usuario en base de datos
-    const usuarios = await sql`
-      SELECT 
-        u."IdUsuario",
-        u."NombreCompleto",
-        u."Email",
-        u."Estado",
-        r."Nombre" as "RolNombre",
-        c."IdCliente",
-        c."RazonSocial" as "ClienteNombre"
-      FROM "Usuario" u
-      LEFT JOIN "Rol" r ON u."IdRol" = r."IdRol"
-      LEFT JOIN "Cliente" c ON (
-        (r."Nombre" = 'CLIENTE' AND u."Email" = c."Email") OR 
-        (r."Nombre" != 'CLIENTE' AND u."IdUsuario" = c."IdEncargado")
-      )
-      WHERE u."IdUsuario" = ${session.userId} AND u."Estado" = 'ACTIVO'
-    `
+    // Usar el endpoint del API para obtener el usuario actual
+    const response = await apiClient.getCurrentUser();
 
-    if (usuarios.length === 0) {
-      return null
+    if (response.success && response.user) {
+      return {
+        id: response.user.id,
+        email: response.user.email,
+        nombre: response.user.nombre,
+        rol: response.user.rol,
+        // Estos campos podrían no estar disponibles en la respuesta actual del API
+        // Se pueden agregar al backend si son necesarios
+        idCliente: undefined,
+        clienteNombre: undefined,
+      };
     }
 
-    const usuario = usuarios[0]
-
-    return {
-      id: usuario.IdUsuario,
-      email: usuario.Email,
-      nombre: usuario.NombreCompleto,
-      rol: usuario.RolNombre,
-      idCliente: usuario.IdCliente,
-      clienteNombre: usuario.ClienteNombre,
-    }
+    return null;
   } catch (error) {
-    console.error("Error getting current user:", error)
-    return null
+    console.error("Error getting current user:", error);
+    return null;
   }
 }
 
@@ -93,41 +77,13 @@ export async function requireRole(allowedRoles: string[]): Promise<User> {
   return user
 }
 
-export async function login(
-  email: string,
-  password: string,
-): Promise<{ success: boolean; error?: string; user?: User }> {
-  try {
-    const response = await fetch("/api/auth/login", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ email, password }),
-      credentials: "include",
-    })
-
-    const data = await response.json()
-
-    if (!response.ok) {
-      return { success: false, error: data.error }
-    }
-
-    return { success: true, user: data.user }
-  } catch (error) {
-    console.error("Error en login:", error)
-    return { success: false, error: "Error de conexión" }
-  }
-}
-
 export async function logout(): Promise<void> {
   try {
     await fetch("/api/auth/logout", {
       method: "POST",
-      credentials: "include",
-    })
+    });
   } catch (error) {
-    console.error("Error en logout:", error)
+    console.error("Error en logout:", error);
   }
 }
 

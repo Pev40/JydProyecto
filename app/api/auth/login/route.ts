@@ -1,97 +1,50 @@
-import { type NextRequest, NextResponse } from "next/server"
-import { sql } from "@/lib/db"
-import bcrypt from "bcryptjs"
+import { NextResponse } from "next/server";
+import { cookies } from "next/headers";
+import { apiClient } from "@/lib/api-client";
+import type { Session } from "@/lib/auth";
 
-export async function POST(request: NextRequest) {
+export async function POST(request: Request) {
   try {
-    const body = await request.text()
-    
-    let email, password
-    
-    try {
-      const parsed = JSON.parse(body)
-      email = parsed.email
-      password = parsed.password
-    } catch {
-      return NextResponse.json({ error: "Formato de datos inválido" }, { status: 400 })
-    }
+    const { email, password } = await request.json();
 
     if (!email || !password) {
-      return NextResponse.json({ error: "Email y contraseña son requeridos" }, { status: 400 })
+      return NextResponse.json({ error: "Email y contraseña son requeridos" }, { status: 400 });
     }
 
-    if (!sql) {
-      return NextResponse.json({ error: "Base de datos no disponible" }, { status: 500 })
+    const response = await apiClient.login(email, password);
+
+    if (!response.success || !response.user) {
+      const errorMessage = (response as { message?: string }).message || "Credenciales incorrectas";
+      return NextResponse.json({ error: errorMessage }, { status: 401 });
     }
 
-    // Buscar usuario en la base de datos con nombres correctos
-    const usuarios = await sql`
-      SELECT 
-        u."IdUsuario",
-        u."NombreCompleto",
-        u."Username",
-        u."Email",
-        u."HashContrasena",
-        u."Estado",
-        u."IdRol",
-        r."Nombre" as "RolNombre"
-      FROM "Usuario" u
-      LEFT JOIN "Rol" r ON u."IdRol" = r."IdRol"
-      WHERE u."Username" = ${email} AND u."Estado" = 'ACTIVO'
-    `
+    const userFromApi = response.user;
+    
+    // Mapeo de NombreRol a rol
+    const rol = userFromApi.NombreRol;
 
-    if (usuarios.length === 0) {
-      return NextResponse.json({ error: "Credenciales inválidas" }, { status: 401 })
-    }
-
-    const usuario = usuarios[0]
-
-    // Verificar contraseña
-    const passwordValida = await bcrypt.compare(password, usuario.HashContrasena)
-
-    if (!passwordValida) {
-      return NextResponse.json({ error: "Credenciales inválidas" }, { status: 401 })
-    }
-
-    // Actualizar último acceso
-    await sql`
-      UPDATE "Usuario" 
-      SET "FechaUltimaSesion" = NOW()
-      WHERE "IdUsuario" = ${usuario.IdUsuario}
-    `
-
-    // Crear sesión
-    const session = {
-      userId: usuario.IdUsuario,
-      email: usuario.Email,
-      nombre: usuario.NombreCompleto,
-      rol: usuario.RolNombre,
+    // Guardar la sesión en una cookie del lado del servidor
+    const session: Session = {
+      userId: userFromApi.id,
+      email: userFromApi.email,
+      nombre: userFromApi.nombre,
+      rol: rol,
       timestamp: Date.now(),
-    }
+    };
 
-    // Crear respuesta con cookie de sesión
-    const response = NextResponse.json({
-      success: true,
-      user: {
-        id: usuario.IdUsuario,
-        email: usuario.Email,
-        nombre: usuario.NombreCompleto,
-        NombreRol: usuario.RolNombre,
-      },
-    })
-
-    // Configurar cookie de sesión
-    response.cookies.set("session", JSON.stringify(session), {
+    cookies().set("session", JSON.stringify(session), {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      maxAge: 60 * 60 * 24 * 7, // 7 días
+      maxAge: 60 * 60 * 24, // 1 día
       path: "/",
-    })
+    });
 
-    return response
+    // Devolver el usuario (sin datos sensibles) al cliente
+    return NextResponse.json({ user: { id: userFromApi.id, nombre: userFromApi.nombre, email: userFromApi.email, rol: rol } });
+
   } catch (error) {
-    console.error("Error en login:", error)
-    return NextResponse.json({ error: "Error interno del servidor" }, { status: 500 })
+    console.error("[API_LOGIN_ERROR]", error);
+    const errorMessage = error instanceof Error ? error.message : "Error interno del servidor";
+    return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }

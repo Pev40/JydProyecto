@@ -1,31 +1,142 @@
-import { getCurrentUser } from "@/lib/auth"
-import { neon } from "@neondatabase/serverless"
+"use client"
+
+import { useEffect, useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { CalendarDays, CreditCard, DollarSign, User } from "lucide-react"
-import { redirect } from "next/navigation"
+import { CalendarDays, CreditCard, DollarSign, User, Loader2 } from "lucide-react"
 import { ReloadButton } from "@/components/reload-button"
 
-const sql = neon(process.env.DATABASE_URL!)
+interface Cliente {
+  IdCliente: number
+  RazonSocial: string
+  RucDni: string
+  Email: string
+  Estado: string
+  Clasificacion: string
+  MontoFijoMensual: number
+}
 
-// Forzar renderizado dinámico
-export const dynamic = 'force-dynamic'
+interface Pago {
+  IdPago: number
+  Monto: string | number
+  Fecha: string
+  ServicioNombre: string
+}
 
-export default async function PortalPage() {
-  const user = await getCurrentUser()
+interface Notificacion {
+  IdNotificacion: number
+  TipoNotificacion: string
+  FechaEnvio: string
+  Mensaje: string
+}
 
+interface Compromiso {
+  IdCompromiso: number
+  FechaCompromiso: string
+  Monto: number
+  Estado: string
+}
+
+export default function PortalPage() {
+  const [cliente, setCliente] = useState<Cliente | null>(null)
+  const [pagos, setPagos] = useState<Pago[]>([])
+  const [notificaciones, setNotificaciones] = useState<Notificacion[]>([])
+  const [compromisos, setCompromisos] = useState<Compromiso[]>([])
+  const [pagosPendientesCount, setPagosPendientesCount] = useState(0)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    cargarDatos()
+  }, [])
+
+  const cargarDatos = async () => {
+    try {
+      setLoading(true)
+      setError(null)
+
+      // Verificar autenticación primero
+      const authResponse = await fetch('/api/auth/me')
+      if (!authResponse.ok) {
+        window.location.href = '/login'
+        return
+      }
+
+      const user = await authResponse.json()
   if (!user || user.rol !== "CLIENTE") {
-    redirect("/login")
+        window.location.href = '/login'
+        return
+      }
+
+      if (!user.idCliente) {
+        setError("Tu cuenta no tiene un cliente asociado. Contacta al administrador.")
+        return
+      }
+
+      // Cargar datos de forma paralela
+      const [clienteResponse, pagosResponse, notificacionesResponse, estadisticasResponse] = await Promise.all([
+        fetch('/api/portal/cliente'),
+        fetch('/api/portal/pagos'),
+        fetch('/api/portal/notificaciones'),
+        fetch('/api/portal/estadisticas')
+      ])
+
+      if (!clienteResponse.ok) {
+        if (clienteResponse.status === 404) {
+          setError("Cliente no encontrado. Contacta al administrador.")
+          return
+        }
+        throw new Error('Error cargando cliente')
+      }
+
+      if (!pagosResponse.ok || !notificacionesResponse.ok || !estadisticasResponse.ok) {
+        throw new Error('Error cargando datos')
+      }
+
+      const clienteData = await clienteResponse.json()
+      const pagosData = await pagosResponse.json()
+      const notificacionesData = await notificacionesResponse.json()
+      const estadisticasData = await estadisticasResponse.json()
+
+      setCliente(clienteData.cliente)
+      setPagos(pagosData.pagos)
+      setNotificaciones(notificacionesData.notificaciones)
+      setCompromisos(estadisticasData.estadisticas.compromisosPendientes)
+      setPagosPendientesCount(estadisticasData.estadisticas.pagosPendientesCount)
+
+    } catch (error) {
+      console.error('Error cargando datos del portal:', error)
+      setError("Error al cargar los datos. Intenta nuevamente.")
+    } finally {
+      setLoading(false)
+    }
   }
 
-  // Verificar que el usuario tenga idCliente
-  if (!user.idCliente) {
+  if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-900 mb-4">Error de Configuración</h1>
-          <p className="text-gray-600 mb-4">Tu cuenta no tiene un cliente asociado. Contacta al administrador.</p>
-          <form action="/api/auth/logout" method="POST">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
+          <p className="text-gray-600">Cargando tu información...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-gray-900 mb-4">Error</h1>
+          <p className="text-gray-600 mb-4">{error}</p>
+          <div className="space-x-4">
+            <button
+              onClick={cargarDatos}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium"
+            >
+              Reintentar
+            </button>
+            <form action="/api/auth/logout" method="POST" className="inline">
             <button
               type="submit"
               className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md text-sm font-medium"
@@ -33,23 +144,13 @@ export default async function PortalPage() {
               Cerrar Sesión
             </button>
           </form>
+          </div>
         </div>
       </div>
     )
   }
 
-  // Obtener información del cliente
-  let clienteResult, compromisosPago, pagos, compromisos, notificaciones, pagosPendientes
-  
-  try {
-    clienteResult = await sql`
-      SELECT c.*, cl."Descripcion" as "Clasificacion"
-      FROM "Cliente" c
-      LEFT JOIN "Clasificacion" cl ON c."IdClasificacion" = cl."IdClasificacion"
-      WHERE c."IdCliente" = ${user.idCliente}
-    `
-
-    if (clienteResult.length === 0) {
+  if (!cliente) {
       return (
         <div className="min-h-screen bg-gray-50 flex items-center justify-center">
           <div className="text-center">
@@ -68,119 +169,84 @@ export default async function PortalPage() {
       )
     }
 
-    const clienteData = clienteResult[0]
-
-    // Obtener datos de forma paralela para mejorar performance
-    const [
-      compromisosPagoResult,
-      pagosResult,
-      compromisosResult,
-      notificacionesResult,
-      pagosPendientesResult
-    ] = await Promise.all([
-      // Compromisos de pago del cliente
-      sql`
-        SELECT cp.*, s."Nombre" as "ServicioNombre"
-        FROM "CompromisoPago" cp
-        LEFT JOIN "Servicio" s ON s."IdServicio" = (
-          SELECT "IdServicio" FROM "Cliente" WHERE "IdCliente" = cp."IdCliente"
-        )
-        WHERE cp."IdCliente" = ${user.idCliente}
-        ORDER BY cp."FechaCompromiso"
-      `,
-      // Pagos realizados
-      sql`
-        SELECT p.*, s."Nombre" as "ServicioNombre"
-        FROM "Pago" p
-        LEFT JOIN "Cliente" c ON p."IdCliente" = c."IdCliente"
-        LEFT JOIN "Servicio" s ON c."IdServicio" = s."IdServicio"
-        WHERE p."IdCliente" = ${user.idCliente}
-        ORDER BY p."Fecha" DESC
-        LIMIT 5
-      `,
-      // Compromisos pendientes
-      sql`
-        SELECT * FROM "CompromisoPago"
-        WHERE "IdCliente" = ${user.idCliente} AND "Estado" = 'PENDIENTE'
-        ORDER BY "FechaCompromiso"
-      `,
-      // Notificaciones del cliente
-      sql`
-        SELECT * FROM "Notificacion" 
-        WHERE "IdCliente" = ${user.idCliente}
-        ORDER BY "FechaEnvio" DESC
-        LIMIT 5
-      `,
-      // Pagos pendientes
-      sql`
-        SELECT COUNT(*) as count FROM "CompromisoPago" 
-        WHERE "IdCliente" = ${user.idCliente} AND "Estado" = 'PENDIENTE'
-      `
-    ])
-
-    compromisosPago = compromisosPagoResult
-    pagos = pagosResult
-    compromisos = compromisosResult
-    notificaciones = notificacionesResult
-    pagosPendientes = pagosPendientesResult
-
-  } catch (error) {
-    console.error("Error al obtener datos del portal:", error)
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-900 mb-4">Error de Base de Datos</h1>
-          <p className="text-gray-600 mb-4">Hubo un problema al cargar tus datos. Intenta nuevamente.</p>
-          <ReloadButton className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium mr-2">
-            Recargar
-          </ReloadButton>
-          <form action="/api/auth/logout" method="POST" className="inline">
-            <button
-              type="submit"
-              className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md text-sm font-medium"
-            >
-              Cerrar Sesión
-            </button>
-          </form>
-        </div>
-      </div>
-    )
-  }
-
-  const clienteData = clienteResult[0]
-  
-  // Calcular estadísticas
-  type PagoRow = { IdPago: number; Monto: string | number; Fecha: string; MedioPago: string }
-  type NotifRow = { IdNotificacion: number; TipoNotificacion: string; FechaEnvio: string; Mensaje: string }
-  const totalPagado = (pagos as PagoRow[]).reduce((sum, pago) => sum + Number.parseFloat(String(pago.Monto)), 0)
-  const currentYear = new Date().getFullYear()
-  const pagosEsteAno = (pagos as PagoRow[]).filter((pago) => new Date(pago.Fecha).getFullYear() === currentYear)
-
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <div className="bg-white shadow">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-6">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">Portal del Cliente</h1>
-              <p className="text-gray-600">Bienvenido, {user.nombre}</p>
+          <div className="py-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-3xl font-bold text-gray-900">
+                  ¡Bienvenido, {cliente.RazonSocial}!
+                </h1>
+                <p className="mt-1 text-sm text-gray-500">
+                  Tu portal de cliente - Sistema de Cobranza J&D
+                </p>
+              </div>
+              <div className="flex items-center space-x-4">
+                <ReloadButton onReload={cargarDatos} />
+                <form action="/api/auth/logout" method="POST">
+                  <button
+                    type="submit"
+                    className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md text-sm font-medium"
+                  >
+                    Cerrar Sesión
+                  </button>
+                </form>
+              </div>
             </div>
-            <form action="/api/auth/logout" method="POST">
-              <button
-                type="submit"
-                className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md text-sm font-medium"
-              >
-                Cerrar Sesión
-              </button>
-            </form>
           </div>
         </div>
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Resumen */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        {/* Información del Cliente */}
+        <div className="mb-8">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <User className="h-5 w-5" />
+                Información del Cliente
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div>
+                  <h3 className="text-sm font-medium text-gray-500">Razón Social</h3>
+                  <p className="mt-1 text-sm text-gray-900">{cliente.RazonSocial}</p>
+                </div>
+                <div>
+                  <h3 className="text-sm font-medium text-gray-500">RUC/DNI</h3>
+                  <p className="mt-1 text-sm text-gray-900">{cliente.RucDni}</p>
+                </div>
+                <div>
+                  <h3 className="text-sm font-medium text-gray-500">Clasificación</h3>
+                  <p className="mt-1 text-sm text-gray-900">{cliente.Clasificacion || 'No clasificado'}</p>
+                </div>
+                <div>
+                  <h3 className="text-sm font-medium text-gray-500">Estado</h3>
+                  <Badge variant={cliente.Estado === 'ACTIVO' ? 'default' : 'secondary'}>
+                    {cliente.Estado}
+                  </Badge>
+                </div>
+                <div>
+                  <h3 className="text-sm font-medium text-gray-500">Monto Fijo Mensual</h3>
+                  <p className="mt-1 text-sm text-gray-900">S/ {cliente.MontoFijoMensual?.toFixed(2) || '0.00'}</p>
+                </div>
+                <div>
+                  <h3 className="text-sm font-medium text-gray-500">Pagos Pendientes</h3>
+                  <Badge variant={pagosPendientesCount > 0 ? 'destructive' : 'default'}>
+                    {pagosPendientesCount}
+                  </Badge>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Estadísticas */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Total Pagado</CardTitle>
@@ -188,160 +254,119 @@ export default async function PortalPage() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">S/ {totalPagado.toFixed(2)}</div>
-              <p className="text-xs text-muted-foreground">{pagos.length} pagos realizados</p>
+              <p className="text-xs text-muted-foreground">
+                {pagosEsteAno.length} pagos este año
+              </p>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Cuotas Pendientes</CardTitle>
+              <CardTitle className="text-sm font-medium">Compromisos Pendientes</CardTitle>
               <CalendarDays className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{pagosPendientes[0].count}</div>
-              <p className="text-xs text-muted-foreground">Por vencer próximamente</p>
+              <div className="text-2xl font-bold">{compromisos.length}</div>
+              <p className="text-xs text-muted-foreground">
+                Próximo: {compromisos.length > 0 ? new Date(compromisos[0].FechaCompromiso).toLocaleDateString() : 'Ninguno'}
+              </p>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Estado</CardTitle>
-              <User className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                <Badge variant={clienteData.Clasificacion === "NORMAL" ? "default" : "destructive"}>
-                  {clienteData.Clasificacion}
-                </Badge>
-              </div>
-              <p className="text-xs text-muted-foreground">Clasificación actual</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Este Año</CardTitle>
+              <CardTitle className="text-sm font-medium">Pagos Realizados</CardTitle>
               <CreditCard className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{pagosEsteAno.length}</div>
-              <p className="text-xs text-muted-foreground">Pagos en {currentYear}</p>
+              <div className="text-2xl font-bold">{pagos.length}</div>
+              <p className="text-xs text-muted-foreground">
+                Último: {pagos.length > 0 ? new Date(pagos[0].Fecha).toLocaleDateString() : 'Ninguno'}
+              </p>
             </CardContent>
           </Card>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* Información Personal */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Información Personal</CardTitle>
-              <CardDescription>Datos de tu cuenta</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <label className="text-sm font-medium text-gray-500">Nombre</label>
-                <p className="text-lg">{clienteData.RazonSocial}</p>
-              </div>
-              <div>
-                <label className="text-sm font-medium text-gray-500">RUC/DNI</label>
-                <p className="text-lg font-mono">{clienteData.RucDni}</p>
-              </div>
-              <div>
-                <label className="text-sm font-medium text-gray-500">Email</label>
-                <p className="text-lg">{clienteData.Email}</p>
-              </div>
-              <div>
-                <label className="text-sm font-medium text-gray-500">Teléfono</label>
-                <p className="text-lg">{clienteData.Telefono}</p>
-              </div>
-              {clienteData.NombreContacto && (
-                <div>
-                  <label className="text-sm font-medium text-gray-500">Contacto</label>
-                  <p className="text-lg">{clienteData.NombreContacto}</p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Últimos Pagos */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Pagos Recientes */}
           <Card>
             <CardHeader>
               <CardTitle>Últimos Pagos</CardTitle>
-              <CardDescription>Historial de pagos recientes</CardDescription>
+              <CardDescription>Tus pagos más recientes</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                {(pagos as PagoRow[]).slice(0, 5).map((pago) => (
-                  <div key={pago.IdPago} className="flex items-center justify-between p-3 border rounded-lg">
-                    <div>
-                      <p className="font-medium">S/ {Number.parseFloat(pago.Monto).toFixed(2)}</p>
-                      <p className="text-sm text-gray-500">{new Date(pago.Fecha).toLocaleDateString()}</p>
+              {pagos.length === 0 ? (
+                <p className="text-sm text-gray-500">No hay pagos registrados</p>
+              ) : (
+                <div className="space-y-4">
+                  {pagos.slice(0, 5).map((pago) => (
+                    <div key={pago.IdPago} className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium">{pago.ServicioNombre || 'Servicio'}</p>
+                        <p className="text-xs text-gray-500">{new Date(pago.Fecha).toLocaleDateString()}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm font-medium">S/ {Number(pago.Monto).toFixed(2)}</p>
+                      </div>
                     </div>
-                    <Badge variant="outline">{pago.MedioPago}</Badge>
-                  </div>
-                ))}
-                {pagos.length === 0 && <p className="text-center text-gray-500 py-4">No hay pagos registrados</p>}
-              </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
 
           {/* Notificaciones */}
           <Card>
             <CardHeader>
-              <CardTitle>Notificaciones Recientes</CardTitle>
+              <CardTitle>Notificaciones</CardTitle>
               <CardDescription>Últimas comunicaciones</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                {(notificaciones as NotifRow[]).map((notif) => (
-                  <div key={notif.IdNotificacion} className="p-3 border rounded-lg">
-                    <div className="flex items-center justify-between mb-2">
-                      <Badge variant="outline">{notif.TipoNotificacion}</Badge>
-                      <span className="text-xs text-gray-500">{new Date(notif.FechaEnvio).toLocaleDateString()}</span>
-                    </div>
-                    <p className="text-sm">{notif.Mensaje}</p>
-                  </div>
-                ))}
-                {notificaciones.length === 0 && <p className="text-center text-gray-500 py-4">No hay notificaciones</p>}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Calendario de Cuotas */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Estado de Cuotas {currentYear}</CardTitle>
-              <CardDescription>Progreso de pagos mensuales</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {Array.from({ length: 12 }, (_, i) => {
-                  const mes = i + 1
-                  const nombreMes = new Date(currentYear, i, 1).toLocaleDateString("es-ES", { month: "long" })
-                  const pagoMes = pagosEsteAno.find((pago) => new Date(pago.Fecha).getMonth() === i)
-
-                  return (
-                    <div key={mes} className="flex items-center justify-between">
-                      <span className="text-sm capitalize">{nombreMes}</span>
-                      <div className="flex items-center space-x-2">
-                        {pagoMes ? (
-                          <>
-                            <Badge variant="default">Pagado</Badge>
-                            <span className="text-sm text-gray-500">
-                              S/ {Number.parseFloat(pagoMes.Monto).toFixed(2)}
-                            </span>
-                          </>
-                        ) : (
-                          <Badge variant="secondary">Pendiente</Badge>
+              {notificaciones.length === 0 ? (
+                <p className="text-sm text-gray-500">No hay notificaciones</p>
+              ) : (
+                <div className="space-y-4">
+                  {notificaciones.slice(0, 5).map((notif) => (
+                    <div key={notif.IdNotificacion} className="flex items-start space-x-3">
+                      <div className="flex-1">
+                        <p className="text-sm font-medium">{notif.TipoNotificacion}</p>
+                        <p className="text-xs text-gray-500">{new Date(notif.FechaEnvio).toLocaleDateString()}</p>
+                        {notif.Mensaje && (
+                          <p className="text-sm text-gray-700 mt-1">{notif.Mensaje}</p>
                         )}
                       </div>
                     </div>
-                  )
-                })}
-              </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
+
+        {/* Compromisos Pendientes */}
+        {compromisos.length > 0 && (
+          <Card className="mt-6">
+            <CardHeader>
+              <CardTitle className="text-red-600">Compromisos de Pago Pendientes</CardTitle>
+              <CardDescription>Fechas importantes que requieren tu atención</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {compromisos.map((compromiso) => (
+                  <div key={compromiso.IdCompromiso} className="flex items-center justify-between p-4 border rounded-lg">
+                    <div>
+                      <p className="text-sm font-medium">Fecha: {new Date(compromiso.FechaCompromiso).toLocaleDateString()}</p>
+                      <p className="text-xs text-gray-500">Monto: S/ {compromiso.Monto.toFixed(2)}</p>
+                    </div>
+                    <Badge variant="destructive">
+                      Pendiente
+                    </Badge>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </div>
     </div>
   )

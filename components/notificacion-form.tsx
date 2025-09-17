@@ -10,10 +10,19 @@ import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { toast } from "@/hooks/use-toast"
 import { Loader2, Send, MessageSquare, Mail, Phone } from "lucide-react"
-import type { Cliente } from "@/lib/db"
+
 
 interface NotificacionFormProps {
-  clientes: Cliente[]
+  clientes: {
+    IdCliente: number;
+    RazonSocial: string;
+    NombreContacto?: string;
+    SaldoPendiente?: number;
+    ClasificacionCodigo?: string;
+    ClasificacionDescripcion?: string;
+    Email?: string;
+    Telefono?: string;
+  }[]
   catalogos: {
     tiposNotificacion: TipoNotificacion[]
   }

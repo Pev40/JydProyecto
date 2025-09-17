@@ -1,22 +1,23 @@
-import { type NextRequest, NextResponse } from "next/server"
+import { NextResponse } from "next/server";
+import { cookies } from "next/headers";
+import { apiClient } from "@/lib/api-client";
 
-export async function POST(request: NextRequest) {
+export async function POST() {
   try {
-    // Crear respuesta de redirección
-    const response = NextResponse.redirect(new URL("/login", request.url))
-
-    // Eliminar cookie de sesión
-    response.cookies.set("session", "", {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      maxAge: 0,
-      path: "/",
-    })
-
-    return response
+    // Opcional: llamar al endpoint de logout del backend si es necesario invalidar tokens del lado del servidor
+    await apiClient.logout();
   } catch (error) {
-    console.error("Error en logout:", error)
-    return NextResponse.json({ error: "Error interno del servidor" }, { status: 500 })
+    // Aunque falle la llamada al backend, procedemos a limpiar la cookie local
+    console.error("[API_LOGOUT_BACKEND_ERROR]", error);
+  }
+
+  try {
+    // Eliminar la cookie de sesión
+    cookies().set("session", "", { expires: new Date(0), path: "/" });
+    return NextResponse.json({ success: true, message: "Logout exitoso" });
+  } catch (error) {
+    console.error("[API_LOGOUT_COOKIE_ERROR]", error);
+    const errorMessage = error instanceof Error ? error.message : "Error interno del servidor";
+    return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }

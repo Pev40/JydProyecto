@@ -1,4 +1,4 @@
-import { sql } from "@/lib/db"
+import { apiClient } from "@/lib/api-client"
 
 export interface Cliente {
   IdCliente: number
@@ -50,204 +50,206 @@ interface ClientesFiltros {
 }
 
 export async function getClientes(filtros?: ClientesFiltros): Promise<Cliente[]> {
-  if (!sql) {
-    throw new Error("Base de datos no disponible")
-  }
-
   try {
-    const result = await sql`
-      SELECT 
-        c."IdCliente",
-        c."RazonSocial",
-        c."NombreContacto",
-        c."RucDni",
-        c."UltimoDigitoRUC",
-        c."IdClasificacion",
-        cl."Codigo" as "ClasificacionCodigo",
-        cl."Descripcion" as "ClasificacionDescripcion",
-        cl."Color" as "ClasificacionColor",
-        c."IdCartera",
-        ca."Nombre" as "CarteraNombre",
-        c."IdEncargado",
-        u."NombreCompleto" as "EncargadoNombre",
-        c."IdServicio",
-        s."Nombre" as "ServicioNombre",
-        c."MontoFijoMensual",
-        c."AplicaMontoFijo",
-        c."IdCategoriaEmpresa",
-        ce."Nombre" as "CategoriaEmpresa",
-        c."FechaRegistro",
-        c."FechaVencimiento",
-        c."Email",
-        c."Telefono",
-        c."Estado",
-        COALESCE(
-          (SELECT SUM(cp."MontoCompromiso") 
-           FROM "CompromisoPago" cp 
-           WHERE cp."IdCliente" = c."IdCliente" 
-           AND cp."Estado" = 'PENDIENTE'), 0
-        ) as "SaldoPendiente"
-      FROM "Cliente" c
-      LEFT JOIN "Clasificacion" cl ON c."IdClasificacion" = cl."IdClasificacion"
-      LEFT JOIN "Cartera" ca ON c."IdCartera" = ca."IdCartera"
-      LEFT JOIN "Usuario" u ON c."IdEncargado" = u."IdUsuario"
-      LEFT JOIN "Servicio" s ON c."IdServicio" = s."IdServicio"
-      LEFT JOIN "CategoriaEmpresa" ce ON c."IdCategoriaEmpresa" = ce."IdCategoriaEmpresa"
-      WHERE (
-        ${filtros?.ultimoDigito !== undefined ? sql`c."UltimoDigitoRUC" = ${filtros.ultimoDigito}` : sql`TRUE`}
-        AND ${filtros?.clasificacion ? sql`cl."Codigo" = ${filtros.clasificacion}` : sql`TRUE`}
-        AND ${filtros?.cartera ? sql`c."IdCartera" = ${filtros.cartera}` : sql`TRUE`}
-      )
-      ORDER BY c."FechaRegistro" DESC, c."RazonSocial" ASC
-    `
+    const response = await apiClient.getClientes({
+      ultimoDigito: filtros?.ultimoDigito,
+      clasificacion: filtros?.clasificacion,
+      cartera: filtros?.cartera,
+      limit: 100 // Límite razonable para la consulta
+    });
 
-    return Array.isArray(result) ? result as Cliente[] : []
+    if (!response.success) {
+      throw new Error("Error al obtener clientes del backend");
+    }
+
+    // Transformar los datos del backend al formato esperado por el frontend
+    return response.clientes.map((cliente: any) => ({
+      IdCliente: cliente.idcliente,
+      RazonSocial: cliente.razonsocial,
+      NombreContacto: cliente.nombrecontacto || '',
+      RucDni: cliente.rucdni,
+      UltimoDigitoRUC: cliente.ultimodigitoruc,
+      IdClasificacion: cliente.idclasificacion,
+      ClasificacionCodigo: cliente.clasificacion?.codigo || '',
+      ClasificacionDescripcion: cliente.clasificacion?.descripcion || '',
+      ClasificacionColor: cliente.clasificacion?.color || '',
+      IdCartera: cliente.idcartera,
+      CarteraNombre: cliente.cartera?.nombre || '',
+      IdEncargado: cliente.idencargado,
+      EncargadoNombre: cliente.encargado?.nombrecompleto || '',
+      IdServicio: cliente.idservicio,
+      ServicioNombre: cliente.servicio?.nombre || '',
+      MontoFijoMensual: cliente.montofijomensual,
+      AplicaMontoFijo: cliente.aplicamontofijo,
+      IdCategoriaEmpresa: cliente.idcategoriaempresa,
+      CategoriaEmpresa: cliente.categoriaempresa?.nombre || '',
+      FechaRegistro: cliente.fecharegistro,
+      FechaVencimiento: cliente.fechavencimiento || '',
+      Email: cliente.email || '',
+      Telefono: cliente.telefono || '',
+      Estado: cliente.estado,
+      SaldoPendiente: cliente.saldopendiente || 0
+    }));
   } catch (error) {
-    console.error("Error fetching clients:", error)
-    throw new Error("Error al obtener clientes")
+    console.error("Error fetching clients:", error);
+    throw new Error("Error al obtener clientes");
   }
 }
 
 export async function getPagos(): Promise<Pago[]> {
-  if (!sql) {
-    throw new Error("Base de datos no disponible")
-  }
-
   try {
-    const result = await sql`
-      SELECT 
-        p."IdPago",
-        p."IdCliente",
-        c."RazonSocial" as "ClienteRazonSocial",
-        p."Fecha",
-        p."IdBanco",
-        b."Nombre" as "BancoNombre",
-        p."Monto",
-        p."Concepto",
-        p."MedioPago",
-        p."UrlComprobante",
-        p."MesServicio",
-        p."Estado"
-      FROM "Pago" p
-      LEFT JOIN "Cliente" c ON p."IdCliente" = c."IdCliente"
-      LEFT JOIN "Banco" b ON p."IdBanco" = b."IdBanco"
-      ORDER BY p."Fecha" DESC
-    `
+    const response = await apiClient.getPagos({
+      limit: 100 // Límite razonable
+    });
 
-    return result as Pago[]
+    if (!response.success) {
+      throw new Error("Error al obtener pagos del backend");
+    }
+
+    // Transformar los datos del backend al formato esperado por el frontend
+    return response.pagos.map((pago: any) => ({
+      IdPago: pago.idpago,
+      IdCliente: pago.idcliente,
+      ClienteRazonSocial: pago.cliente?.razonsocial || '',
+      Fecha: pago.fecha,
+      IdBanco: pago.idbanco,
+      BancoNombre: pago.banco?.nombre || '',
+      Monto: pago.monto,
+      Concepto: pago.concepto,
+      MedioPago: pago.mediopago,
+      UrlComprobante: pago.urlcomprobante,
+      MesServicio: pago.messervicio,
+      Estado: pago.estado
+    }));
   } catch (error) {
-    console.error("Error fetching payments:", error)
-    throw new Error("Error al obtener pagos")
+    console.error("Error fetching payments:", error);
+    throw new Error("Error al obtener pagos");
   }
 }
 
 export async function getClienteById(id: number): Promise<Cliente | null> {
-  if (!sql) {
-    throw new Error("Base de datos no disponible")
-  }
-
   try {
-    const result = await sql`
-      SELECT 
-        c."IdCliente",
-        c."RazonSocial",
-        c."NombreContacto",
-        c."RucDni",
-        c."UltimoDigitoRUC",
-        c."IdClasificacion",
-        cl."Codigo" as "ClasificacionCodigo",
-        cl."Descripcion" as "ClasificacionDescripcion",
-        cl."Color" as "ClasificacionColor",
-        c."IdCartera",
-        ca."Nombre" as "CarteraNombre",
-        c."IdEncargado",
-        u."NombreCompleto" as "EncargadoNombre",
-        c."IdServicio",
-        s."Nombre" as "ServicioNombre",
-        c."MontoFijoMensual",
-        c."AplicaMontoFijo",
-        c."IdCategoriaEmpresa",
-        ce."Nombre" as "CategoriaEmpresa",
-        c."FechaRegistro",
-        c."FechaVencimiento",
-        c."Email",
-        c."Telefono"
-      FROM "Cliente" c
-      LEFT JOIN "Clasificacion" cl ON c."IdClasificacion" = cl."IdClasificacion"
-      LEFT JOIN "Cartera" ca ON c."IdCartera" = ca."IdCartera"
-      LEFT JOIN "Usuario" u ON c."IdEncargado" = u."IdUsuario"
-      LEFT JOIN "Servicio" s ON c."IdServicio" = s."IdServicio"
-      LEFT JOIN "CategoriaEmpresa" ce ON c."IdCategoriaEmpresa" = ce."IdCategoriaEmpresa"
-      WHERE c."IdCliente" = ${id}
-    `
+    const response = await apiClient.getClienteById(id);
 
-    return result.length > 0 ? (result[0] as Cliente) : null
+    if (!response.success) {
+      throw new Error("Error al obtener cliente del backend");
+    }
+
+    if (!response.cliente) {
+      return null;
+    }
+
+    const cliente = response.cliente;
+
+    // Transformar los datos del backend al formato esperado por el frontend
+    return {
+      IdCliente: cliente.idcliente,
+      RazonSocial: cliente.razonsocial,
+      NombreContacto: cliente.nombrecontacto || '',
+      RucDni: cliente.rucdni,
+      UltimoDigitoRUC: cliente.ultimodigitoruc,
+      IdClasificacion: cliente.idclasificacion,
+      ClasificacionCodigo: cliente.clasificacion?.codigo || '',
+      ClasificacionDescripcion: cliente.clasificacion?.descripcion || '',
+      ClasificacionColor: cliente.clasificacion?.color || '',
+      IdCartera: cliente.idcartera,
+      CarteraNombre: cliente.cartera?.nombre || '',
+      IdEncargado: cliente.idencargado,
+      EncargadoNombre: cliente.encargado?.nombrecompleto || '',
+      IdServicio: cliente.idservicio,
+      ServicioNombre: cliente.servicio?.nombre || '',
+      MontoFijoMensual: cliente.montofijomensual,
+      AplicaMontoFijo: cliente.aplicamontofijo,
+      IdCategoriaEmpresa: cliente.idcategoriaempresa,
+      CategoriaEmpresa: cliente.categoriaempresa?.nombre || '',
+      FechaRegistro: cliente.fecharegistro,
+      FechaVencimiento: cliente.fechavencimiento || '',
+      Email: cliente.email || '',
+      Telefono: cliente.telefono || '',
+      Estado: cliente.estado,
+      SaldoPendiente: cliente.saldopendiente || 0
+    };
   } catch (error) {
-    console.error("Error fetching client:", error)
-    throw new Error("Error al obtener cliente")
+    console.error("Error fetching client:", error);
+    throw new Error("Error al obtener cliente");
   }
 }
 
 export async function getPagosByClienteId(clienteId: number): Promise<Pago[]> {
-  if (!sql) {
-    throw new Error("Base de datos no disponible")
-  }
-
   try {
-    const result = await sql`
-      SELECT 
-        p."IdPago",
-        p."IdCliente",
-        c."RazonSocial" as "ClienteRazonSocial",
-        p."Fecha",
-        p."IdBanco",
-        b."Nombre" as "BancoNombre",
-        p."Monto",
-        p."Concepto",
-        p."MedioPago",
-        p."UrlComprobante",
-        p."MesServicio",
-        p."Estado"
-      FROM "Pago" p
-      LEFT JOIN "Cliente" c ON p."IdCliente" = c."IdCliente"
-      LEFT JOIN "Banco" b ON p."IdBanco" = b."IdBanco"
-      WHERE p."IdCliente" = ${clienteId}
-      ORDER BY p."Fecha" DESC
-    `
+    const response = await apiClient.getPagos({
+      cliente_id: clienteId,
+      limit: 100
+    });
 
-    return result as Pago[]
+    if (!response.success) {
+      throw new Error("Error al obtener pagos del cliente del backend");
+    }
+
+    // Transformar los datos del backend al formato esperado por el frontend
+    return response.pagos.map((pago: any) => ({
+      IdPago: pago.idpago,
+      IdCliente: pago.idcliente,
+      ClienteRazonSocial: pago.cliente?.razonsocial || '',
+      Fecha: pago.fecha,
+      IdBanco: pago.idbanco,
+      BancoNombre: pago.banco?.nombre || '',
+      Monto: pago.monto,
+      Concepto: pago.concepto,
+      MedioPago: pago.mediopago,
+      UrlComprobante: pago.urlcomprobante,
+      MesServicio: pago.messervicio,
+      Estado: pago.estado
+    }));
   } catch (error) {
-    console.error("Error fetching client payments:", error)
-    throw new Error("Error al obtener pagos del cliente")
+    console.error("Error fetching client payments:", error);
+    throw new Error("Error al obtener pagos del cliente");
   }
 }
 
 export async function getCatalogos() {
-  if (!sql) {
-    throw new Error("Base de datos no disponible")
-  }
-
   try {
-    const [clasificaciones, carteras, categorias, servicios, bancos, usuarios] = await Promise.all([
-      sql`SELECT "IdClasificacion", "Codigo", "Descripcion", "Color" FROM "Clasificacion" ORDER BY "Descripcion"`,
-      sql`SELECT "IdCartera", "Nombre" FROM "Cartera" ORDER BY "Nombre"`,
-      sql`SELECT "IdCategoriaEmpresa", "Nombre", "Descripcion" FROM "CategoriaEmpresa" ORDER BY "Nombre"`,
-      sql`SELECT "IdServicio", "Nombre", "Descripcion" FROM "Servicio" ORDER BY "Nombre"`,
-      sql`SELECT "IdBanco", "Nombre" FROM "Banco" ORDER BY "Nombre"`,
-      sql`SELECT "IdUsuario", "NombreCompleto", "Email" FROM "Usuario" WHERE "Estado" = 'ACTIVO' ORDER BY "NombreCompleto"`
-    ])
+    const response = await apiClient.getCatalogos();
 
-    return {
-      clasificaciones,
-      carteras,
-      categorias,
-      servicios,
-      bancos,
-      usuarios
+    if (!response.success) {
+      throw new Error("Error al obtener catálogos del backend");
     }
+
+    // Transformar los datos del backend al formato esperado por el frontend
+    return {
+      clasificaciones: response.clasificaciones?.map((c: any) => ({
+        IdClasificacion: c.idclasificacion,
+        Codigo: c.codigo,
+        Descripcion: c.descripcion,
+        Color: c.color
+      })) || [],
+      carteras: response.carteras?.map((c: any) => ({
+        IdCartera: c.idcartera,
+        Nombre: c.nombre
+      })) || [],
+      categorias: response.categorias?.map((c: any) => ({
+        IdCategoriaEmpresa: c.idcategoriaempresa,
+        Nombre: c.nombre,
+        Descripcion: c.descripcion
+      })) || [],
+      servicios: response.servicios?.map((s: any) => ({
+        IdServicio: s.idservicio,
+        Nombre: s.nombre,
+        Descripcion: s.descripcion
+      })) || [],
+      bancos: response.bancos?.map((b: any) => ({
+        IdBanco: b.idbanco,
+        Nombre: b.nombre
+      })) || [],
+      usuarios: response.usuarios?.map((u: any) => ({
+        IdUsuario: u.idusuario,
+        NombreCompleto: u.nombrecompleto,
+        Email: u.email
+      })) || []
+    };
   } catch (error) {
-    console.error("Error al obtener catálogos:", error)
-    throw error
+    console.error("Error al obtener catálogos:", error);
+    throw error;
   }
 }
 
@@ -274,264 +276,52 @@ export interface ActividadReciente {
 
 // Función para obtener estadísticas del dashboard
 export async function getDashboardStats(): Promise<DashboardStats> {
-  if (!sql) {
-    throw new Error("Base de datos no disponible")
-  }
-
   try {
-    const fechaActual = new Date()
-    const mesActual = fechaActual.getMonth() + 1
-    const anioActual = fechaActual.getFullYear()
-    const mesAnterior = mesActual === 1 ? 12 : mesActual - 1
-    const anioMesAnterior = mesActual === 1 ? anioActual - 1 : anioActual
+    const response = await apiClient.getDashboardStats();
 
-    // Consultas para estadísticas actuales
-    const [
-      clientesActivosResult,
-      pagosMesActualResult,
-      ingresosTotalesResult,
-      clientesMorososResult,
-      clientesActivosAnteriorResult,
-      pagosMesAnteriorResult,
-      ingresosTotalesAnteriorResult,
-      clientesMorososAnteriorResult
-    ] = await Promise.all([
-      // Clientes activos (total de clientes)
-      sql`SELECT COUNT(*) as total FROM "Cliente"`,
-      
-      // Pagos del mes actual
-      sql`
-        SELECT COALESCE(SUM("Monto"), 0) as total 
-        FROM "Pago" 
-        WHERE EXTRACT(MONTH FROM "Fecha") = ${mesActual} 
-        AND EXTRACT(YEAR FROM "Fecha") = ${anioActual}
-        AND "Estado" = 'CONFIRMADO'
-      `,
-      
-      // Ingresos totales
-      sql`
-        SELECT COALESCE(SUM("Monto"), 0) as total 
-        FROM "Pago" 
-        WHERE "Estado" = 'CONFIRMADO'
-      `,
-      
-      // Clientes morosos (clasificación D)
-      sql`
-        SELECT COUNT(*) as total 
-        FROM "Cliente" c
-        LEFT JOIN "Clasificacion" cl ON c."IdClasificacion" = cl."IdClasificacion"
-        WHERE cl."Codigo" = 'D'
-      `,
-      
-      // Comparaciones con mes anterior
-      sql`SELECT COUNT(*) as total FROM "Cliente" WHERE "FechaRegistro" < date_trunc('month', CURRENT_DATE)`,
-      
-      sql`
-        SELECT COALESCE(SUM("Monto"), 0) as total 
-        FROM "Pago" 
-        WHERE EXTRACT(MONTH FROM "Fecha") = ${mesAnterior} 
-        AND EXTRACT(YEAR FROM "Fecha") = ${anioMesAnterior}
-        AND "Estado" = 'CONFIRMADO'
-      `,
-      
-      sql`
-        SELECT COALESCE(SUM("Monto"), 0) as total 
-        FROM "Pago" 
-        WHERE "Estado" = 'CONFIRMADO'
-        AND "Fecha" < date_trunc('month', CURRENT_DATE)
-      `,
-      
-      sql`
-        SELECT COUNT(*) as total 
-        FROM "Cliente" c
-        LEFT JOIN "Clasificacion" cl ON c."IdClasificacion" = cl."IdClasificacion"
-        LEFT JOIN "HistorialClasificacion" hc ON c."IdCliente" = hc."IdCliente"
-        WHERE cl."Codigo" = 'D'
-        AND (hc."FechaCambio" IS NULL OR hc."FechaCambio" < date_trunc('month', CURRENT_DATE))
-      `
-    ])
-
-    const clientesActivos = Number(clientesActivosResult[0]?.total || 0)
-    const pagosMesActual = Number(pagosMesActualResult[0]?.total || 0)
-    const ingresosTotales = Number(ingresosTotalesResult[0]?.total || 0)
-    const clientesMorosos = Number(clientesMorososResult[0]?.total || 0)
-    
-    const clientesActivosAnterior = Number(clientesActivosAnteriorResult[0]?.total || 0)
-    const pagosMesAnterior = Number(pagosMesAnteriorResult[0]?.total || 0)
-    const ingresosTotalesAnterior = Number(ingresosTotalesAnteriorResult[0]?.total || 0)
-    const clientesMorososAnterior = Number(clientesMorososAnteriorResult[0]?.total || 0)
-
-    // Calcular variaciones porcentuales
-    const calcularVariacion = (actual: number, anterior: number): number => {
-      if (anterior === 0) return actual > 0 ? 100 : 0
-      return Math.round(((actual - anterior) / anterior) * 100)
+    if (!response.success) {
+      throw new Error("Error al obtener estadísticas del dashboard del backend");
     }
+
+    const stats = response.estadisticas;
 
     return {
-      clientesActivos,
-      pagosMesActual,
-      ingresosTotales,
-      clientesMorosos,
-      variacionClientesActivos: calcularVariacion(clientesActivos, clientesActivosAnterior),
-      variacionPagosMes: calcularVariacion(pagosMesActual, pagosMesAnterior),
-      variacionIngresosTotales: calcularVariacion(ingresosTotales, ingresosTotalesAnterior),
-      variacionClientesMorosos: calcularVariacion(clientesMorosos, clientesMorososAnterior)
-    }
+      clientesActivos: stats.clientesActivos || 0,
+      pagosMesActual: stats.pagosMesActual || 0,
+      ingresosTotales: stats.ingresosTotales || 0,
+      clientesMorosos: stats.clientesMorosos || 0,
+      variacionClientesActivos: stats.variacionClientesActivos || 0,
+      variacionPagosMes: stats.variacionPagosMes || 0,
+      variacionIngresosTotales: stats.variacionIngresosTotales || 0,
+      variacionClientesMorosos: stats.variacionClientesMorosos || 0
+    };
   } catch (error) {
-    console.error("Error al obtener estadísticas del dashboard:", error)
-    throw new Error("Error al obtener estadísticas del dashboard")
+    console.error("Error al obtener estadísticas del dashboard:", error);
+    throw new Error("Error al obtener estadísticas del dashboard");
   }
 }
 
 // Función para obtener actividades recientes
 export async function getActividadesRecientes(): Promise<ActividadReciente[]> {
-  if (!sql) {
-    throw new Error("Base de datos no disponible")
-  }
-
   try {
-    const actividades: ActividadReciente[] = []
+    const response = await apiClient.getActividadReciente();
 
-    // Últimos pagos
-    const pagosRecientes = await sql`
-      SELECT 
-        p."IdPago" as id,
-        'pago' as tipo,
-        CONCAT('Pago recibido de ', c."RazonSocial") as descripcion,
-        CONCAT('S/ ', p."Monto") as monto,
-        p."Fecha" as fecha,
-        p."Estado" as estado
-      FROM "Pago" p
-      LEFT JOIN "Cliente" c ON p."IdCliente" = c."IdCliente"
-      WHERE p."Estado" = 'CONFIRMADO'
-      ORDER BY p."Fecha" DESC
-      LIMIT 3
-    `
+    if (!response.success) {
+      throw new Error("Error al obtener actividades recientes del backend");
+    }
 
-    // Últimos clientes registrados
-    const clientesRecientes = await sql`
-      SELECT 
-        c."IdCliente" as id,
-        'cliente' as tipo,
-        CONCAT('Nuevo cliente registrado: ', c."RazonSocial") as descripcion,
-        c."FechaRegistro" as fecha,
-        'nuevo' as estado
-      FROM "Cliente" c
-      ORDER BY c."FechaRegistro" DESC
-      LIMIT 2
-    `
-
-    // Últimas notificaciones enviadas
-    const notificacionesRecientes = await sql`
-      SELECT 
-        n."IdNotificacion" as id,
-        'notificacion' as tipo,
-        CASE 
-          WHEN COUNT(*) > 1 THEN CONCAT('Recordatorio enviado a ', COUNT(*), ' clientes')
-          ELSE CONCAT('Notificación enviada a ', c."RazonSocial")
-        END as descripcion,
-        n."FechaEnvio" as fecha,
-        'enviado' as estado
-      FROM "Notificacion" n
-      LEFT JOIN "Cliente" c ON n."IdCliente" = c."IdCliente"
-      WHERE n."Estado" = 'ENVIADO'
-      GROUP BY n."IdNotificacion", c."RazonSocial", n."FechaEnvio", n."Estado"
-      ORDER BY n."FechaEnvio" DESC
-      LIMIT 2
-    `
-
-    // Últimos compromisos de pago
-    const compromisosRecientes = await sql`
-      SELECT 
-        cp."IdCompromisoPago" as id,
-        'compromiso' as tipo,
-        CONCAT('Compromiso de pago registrado: ', c."RazonSocial") as descripcion,
-        CONCAT('S/ ', cp."MontoCompromiso") as monto,
-        cp."FechaRegistro" as fecha,
-        cp."Estado" as estado
-      FROM "CompromisoPago" cp
-      LEFT JOIN "Cliente" c ON cp."IdCliente" = c."IdCliente"
-      ORDER BY cp."FechaRegistro" DESC
-      LIMIT 2
-    `
-
-interface ActividadPago {
-  id: number;
-  tipo: string;
-  descripcion: string;
-  monto: string;
-  fecha: string;
-  estado: string;
-}
-
-interface ActividadCliente {
-  id: number;
-  tipo: string;
-  descripcion: string;
-  fecha: string;
-  estado: string;
-}
-
-interface ActividadNotificacion {
-  id: number;
-  tipo: string;
-  descripcion: string;
-  fecha: string;
-  estado: string;
-}
-
-interface ActividadCompromiso {
-  id: number;
-  tipo: string;
-  descripcion: string;
-  monto: string;
-  fecha: string;
-  estado: string;
-}
-
-    // Combinar todas las actividades
-    actividades.push(...(pagosRecientes as ActividadPago[]).map((p) => ({
-      id: p.id,
-      tipo: p.tipo as 'pago',
-      descripcion: p.descripcion,
-      monto: p.monto,
-      fecha: formatearFechaRelativa(p.fecha),
-      estado: p.estado
-    })))
-
-    actividades.push(...(clientesRecientes as ActividadCliente[]).map((c) => ({
-      id: c.id,
-      tipo: c.tipo as 'cliente',
-      descripcion: c.descripcion,
-      fecha: formatearFechaRelativa(c.fecha),
-      estado: c.estado
-    })))
-
-    actividades.push(...(notificacionesRecientes as ActividadNotificacion[]).map((n) => ({
-      id: n.id,
-      tipo: n.tipo as 'notificacion',
-      descripcion: n.descripcion,
-      fecha: formatearFechaRelativa(n.fecha),
-      estado: n.estado
-    })))
-
-    actividades.push(...(compromisosRecientes as ActividadCompromiso[]).map((cp) => ({
-      id: cp.id,
-      tipo: cp.tipo as 'compromiso',
-      descripcion: cp.descripcion,
-      monto: cp.monto,
-      fecha: formatearFechaRelativa(cp.fecha),
-      estado: cp.estado
-    })))
-
-    // Ordenar por fecha más reciente y limitar a 8 actividades
-    return actividades
-      .sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime())
-      .slice(0, 8)
-
+    // Transformar los datos del backend al formato esperado por el frontend
+    return response.actividad.map((actividad: any) => ({
+      id: actividad.id,
+      tipo: actividad.tipo as 'pago' | 'cliente' | 'notificacion' | 'compromiso',
+      descripcion: actividad.descripcion,
+      monto: actividad.monto,
+      fecha: actividad.fecha,
+      estado: actividad.estado
+    }));
   } catch (error) {
-    console.error("Error al obtener actividades recientes:", error)
-    throw new Error("Error al obtener actividades recientes")
+    console.error("Error al obtener actividades recientes:", error);
+    throw new Error("Error al obtener actividades recientes");
   }
 }
 
@@ -589,68 +379,57 @@ export interface CompromisoPago {
 
 // Función para obtener notificaciones
 export async function getNotificaciones(clienteId?: number): Promise<Notificacion[]> {
-  if (!sql) {
-    throw new Error("Base de datos no disponible")
-  }
-
   try {
-    const result = await sql`
-      SELECT 
-        n."IdNotificacion",
-        n."IdCliente",
-        c."RazonSocial" as "ClienteRazonSocial",
-        n."FechaEnvio",
-        n."IdTipoNotificacion",
-        tn."Nombre" as "TipoNotificacion",
-        n."Contenido",
-        n."IdResponsable",
-        u."NombreCompleto" as "ResponsableNombre",
-        n."Estado"
-      FROM "Notificacion" n
-      LEFT JOIN "Cliente" c ON n."IdCliente" = c."IdCliente"
-      LEFT JOIN "TipoNotificacion" tn ON n."IdTipoNotificacion" = tn."IdTipoNotificacion"
-      LEFT JOIN "Usuario" u ON n."IdResponsable" = u."IdUsuario"
-      WHERE ${clienteId ? sql`n."IdCliente" = ${clienteId}` : sql`TRUE`}
-      ORDER BY n."FechaEnvio" DESC
-    `
+    const response = await apiClient.getNotificaciones(clienteId);
 
-    return result as Notificacion[]
+    if (!response.success) {
+      throw new Error("Error al obtener notificaciones del backend");
+    }
+
+    // Transformar los datos del backend al formato esperado por el frontend
+    return response.notificaciones.map((notif: any) => ({
+      IdNotificacion: notif.idNotificacion,
+      IdCliente: notif.idCliente,
+      ClienteRazonSocial: notif.clienteRazonSocial,
+      FechaEnvio: notif.fechaEnvio,
+      IdTipoNotificacion: notif.idTipoNotificacion,
+      TipoNotificacion: notif.tipoNotificacion,
+      Contenido: notif.contenido,
+      IdResponsable: notif.idResponsable,
+      ResponsableNombre: notif.responsableNombre,
+      Estado: notif.estado
+    }));
   } catch (error) {
-    console.error("Error fetching notifications:", error)
-    throw new Error("Error al obtener notificaciones")
+    console.error("Error fetching notifications:", error);
+    throw new Error("Error al obtener notificaciones");
   }
 }
 
 // Función para obtener compromisos de pago
 export async function getCompromisosPago(clienteId?: number): Promise<CompromisoPago[]> {
-  if (!sql) {
-    throw new Error("Base de datos no disponible")
-  }
-
   try {
-    const result = await sql`
-      SELECT 
-        cp."IdCompromisoPago",
-        cp."IdCliente",
-        c."RazonSocial" as "ClienteRazonSocial",
-        cp."FechaCompromiso",
-        cp."MontoCompromiso",
-        cp."FechaRegistro",
-        cp."IdResponsable",
-        u."NombreCompleto" as "ResponsableNombre",
-        cp."Estado",
-        cp."Observaciones"
-      FROM "CompromisoPago" cp
-      LEFT JOIN "Cliente" c ON cp."IdCliente" = c."IdCliente"
-      LEFT JOIN "Usuario" u ON cp."IdResponsable" = u."IdUsuario"
-      WHERE ${clienteId ? sql`cp."IdCliente" = ${clienteId}` : sql`TRUE`}
-      ORDER BY cp."FechaCompromiso" DESC
-    `
+    const response = await apiClient.getCompromisos(clienteId ? { cliente_id: clienteId } : {});
 
-    return result as CompromisoPago[]
+    if (!response.success) {
+      throw new Error("Error al obtener compromisos del backend");
+    }
+
+    // Transformar los datos del backend al formato esperado por el frontend
+    return response.compromisos.map((compromiso: any) => ({
+      IdCompromisoPago: compromiso.idCompromisoPago,
+      IdCliente: compromiso.idCliente,
+      ClienteRazonSocial: compromiso.clienteRazonSocial,
+      FechaCompromiso: compromiso.fechaCompromiso,
+      MontoCompromiso: compromiso.montoCompromiso,
+      FechaRegistro: compromiso.fechaRegistro,
+      IdResponsable: compromiso.idResponsable,
+      ResponsableNombre: compromiso.responsableNombre,
+      Estado: compromiso.estado,
+      Observaciones: compromiso.observaciones
+    }));
   } catch (error) {
-    console.error("Error fetching payment commitments:", error)
-    throw new Error("Error al obtener compromisos de pago")
+    console.error("Error fetching payment commitments:", error);
+    throw new Error("Error al obtener compromisos de pago");
   }
 }
 
@@ -664,27 +443,24 @@ interface PlantillaMensaje {
 
 // Función para obtener plantillas de mensajes
 export async function getPlantillasMensajes(): Promise<PlantillaMensaje[]> {
-  if (!sql) {
-    throw new Error("Base de datos no disponible")
-  }
-
   try {
-    const result = await sql`
-      SELECT 
-        pm."IdPlantillaMensaje",
-        pm."Nombre",
-        pm."Contenido",
-        pm."IdClasificacion",
-        c."Descripcion" as "ClasificacionNombre"
-      FROM "PlantillaMensaje" pm
-      LEFT JOIN "Clasificacion" c ON pm."IdClasificacion" = c."IdClasificacion"
-      ORDER BY pm."Nombre"
-    `
+    const response = await apiClient.getPlantillas();
 
-    return result as PlantillaMensaje[]
+    if (!response.success) {
+      throw new Error("Error al obtener plantillas del backend");
+    }
+
+    // Transformar los datos del backend al formato esperado por el frontend
+    return response.plantillas.map((plantilla: any) => ({
+      IdPlantillaMensaje: plantilla.idPlantillaMensaje,
+      Nombre: plantilla.nombre,
+      Contenido: plantilla.contenido,
+      IdClasificacion: plantilla.idClasificacion,
+      ClasificacionNombre: plantilla.clasificacionNombre
+    }));
   } catch (error) {
-    console.error("Error fetching message templates:", error)
-    throw new Error("Error al obtener plantillas de mensajes")
+    console.error("Error fetching message templates:", error);
+    throw new Error("Error al obtener plantillas de mensajes");
   }
 }
 
@@ -699,27 +475,36 @@ interface CronogramaSunat {
 
 // Función para obtener cronograma SUNAT por año
 export async function getCronogramaSunatPorAño(año: number): Promise<CronogramaSunat[]> {
-  if (!sql) {
-    throw new Error("Base de datos no disponible")
-  }
-
   try {
-    const result = await sql`
-      SELECT 
-        "IdCronograma",
-        "Año",
-        "Mes",
-        "DigitoRUC",
-        "Dia",
-        "MesVencimiento"
-      FROM "CronogramaSunat"
-      WHERE "Año" = ${año} AND "Estado" = 'ACTIVO'
-      ORDER BY "Mes", "DigitoRUC"
-    `
+    const response = await apiClient.getCronogramaSunat(año);
 
-    return result as CronogramaSunat[]
+    if (!response.success) {
+      throw new Error("Error al obtener cronograma SUNAT del backend");
+    }
+
+    // Transformar los datos del backend al formato esperado por el frontend
+    if (response.cronograma) {
+      // Si viene como objeto agrupado por mes, aplanarlo
+      const cronogramaAplanado: any[] = [];
+      Object.values(response.cronograma).forEach((mesItems: any) => {
+        if (Array.isArray(mesItems)) {
+          cronogramaAplanado.push(...mesItems);
+        }
+      });
+
+      return cronogramaAplanado.map((item: any) => ({
+        IdCronograma: item.IdCronograma,
+        Año: item.Año,
+        Mes: item.Mes,
+        DigitoRUC: item.DigitoRUC,
+        Dia: item.Dia,
+        MesVencimiento: item.MesVencimiento
+      }));
+    }
+
+    return [];
   } catch (error) {
-    console.error("Error fetching SUNAT cronograma:", error)
-    throw new Error("Error al obtener cronograma SUNAT")
+    console.error("Error fetching SUNAT cronograma:", error);
+    throw new Error("Error al obtener cronograma SUNAT");
   }
 }

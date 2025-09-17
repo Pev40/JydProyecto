@@ -22,9 +22,9 @@ export default function LoginPage() {
   // El usuario debe hacer login manualmente
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setLoading(true)
-    setError("")
+    e.preventDefault();
+    setLoading(true);
+    setError("");
 
     try {
       const response = await fetch("/api/auth/login", {
@@ -33,33 +33,33 @@ export default function LoginPage() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ email, password }),
-      })
+      });
 
-      const data = await response.json()
+      const data = await response.json();
 
       if (response.ok) {
         // Redirigir según el rol del usuario
-        switch (data.user.NombreRol) {
-          case "Administrador":
-          case "Encargado Cobranza":
-            router.push("/")
-            break
-          case "Gerente":
-            router.push("/portal")
-            break
+        switch (data.user.rol) {
+          case "ADMIN":
+          case "EMPLEADO":
+            router.push("/");
+            break;
+          case "CLIENTE":
+            router.push("/portal");
+            break;
           default:
-            router.push("/")
+            router.push("/");
         }
-        router.refresh()
+        router.refresh();
       } else {
-        setError(data.error || "Error al iniciar sesión")
+        setError(data.error || "Error al iniciar sesión");
       }
-    } catch (_error) {
-      setError("Error de conexión. Intente nuevamente.")
+    } catch {
+      setError("Error de conexión. Intente nuevamente.");
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-corporate-blue/10 to-corporate-blue/20 p-4">

@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import Link from "next/link"
+import Image from "next/image"
 import { usePathname } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { UserMenu } from "@/components/user-menu"
@@ -191,9 +192,11 @@ export function Navigation({ userRole }: NavigationProps) {
         <div className="jd-header p-6 border-b border-white/10">
           <div className="flex items-center gap-3">
             <div className="w-12 h-12 bg-white/20 rounded-lg flex items-center justify-center">
-                <img
+                <Image
                 src="/isotivojyd.png"
                 alt="Isotipo J&D"
+                width={40}
+                height={40}
                 className="w-10 h-10 object-contain"
                 />
             </div>

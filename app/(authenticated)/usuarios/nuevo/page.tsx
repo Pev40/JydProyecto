@@ -1,30 +1,54 @@
-import { getCurrentUser } from "@/lib/auth"
-import { neon } from "@neondatabase/serverless"
-import { redirect } from "next/navigation"
+"use client"
+
+import { useEffect, useState } from "react"
 import { UsuarioForm } from "@/components/usuario-form"
+import { Loader2 } from "lucide-react"
 
-const sql = neon(process.env.DATABASE_URL!)
+export default function NuevoUsuarioPage() {
+  const [authorized, setAuthorized] = useState<boolean | null>(null)
+  const [loading, setLoading] = useState(true)
 
-// Forzar renderizado dinámico
-export const dynamic = 'force-dynamic'
-export const revalidate = 0
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const response = await fetch('/api/auth/me')
+        if (!response.ok) {
+          window.location.href = '/login'
+          return
+        }
 
-export default async function NuevoUsuarioPage() {
-  const user = await getCurrentUser()
+        const user = await response.json()
+        if (!user || user.rol !== "ADMIN") {
+          window.location.href = '/'
+          return
+        }
 
-  if (!user || user.rol !== "ADMIN") {
-    redirect("/")
+        setAuthorized(true)
+      } catch (error) {
+        console.error('Error checking auth:', error)
+        window.location.href = '/login'
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    checkAuth()
+  }, [])
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
+          <p className="text-gray-600">Verificando permisos...</p>
+        </div>
+      </div>
+    )
   }
 
-  const roles = await sql`
-    SELECT "IdRol", "Nombre" as "NombreRol", "Descripcion"
-    FROM "Rol"
-    ORDER BY "IdRol"
-  ` as Array<{
-    IdRol: number
-    NombreRol: string
-    Descripcion: string
-  }>
+  if (!authorized) {
+    return null // No renderizar nada mientras redirige
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -38,7 +62,7 @@ export default async function NuevoUsuarioPage() {
       </header>
 
       <main className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <UsuarioForm roles={roles} />
+        <UsuarioForm />
       </main>
     </div>
   )

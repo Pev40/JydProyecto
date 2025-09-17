@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -28,21 +28,6 @@ interface ClienteProyeccion {
 
 const mesesAbreviados = ["ENE", "FEB", "MAR", "ABR", "MAY", "JUN", "JUL", "AGO", "SEP", "OCT", "NOV", "DIC"]
 
-const mesesCompletos = [
-  "ENERO",
-  "FEBRERO",
-  "MARZO",
-  "ABRIL",
-  "MAYO",
-  "JUNIO",
-  "JULIO",
-  "AGOSTO",
-  "SEPTIEMBRE",
-  "OCTUBRE",
-  "NOVIEMBRE",
-  "DICIEMBRE",
-]
-
 export default function IngresoCajaFijaProyectadoPage() {
   const [anoSeleccionado, setAnoSeleccionado] = useState(new Date().getFullYear().toString())
   const [datos, setDatos] = useState<ClienteProyeccion[]>([])
@@ -50,7 +35,7 @@ export default function IngresoCajaFijaProyectadoPage() {
   const [resumenIngresos, setResumenIngresos] = useState<{ mes: string; total: number }[]>([])
   const [loading, setLoading] = useState(true)
 
-  const cargarDatos = async () => {
+  const cargarDatos = useCallback(async () => {
     setLoading(true)
     try {
       const response = await fetch(`/api/reportes/ingreso-caja-fija-proyectado?año=${anoSeleccionado}`)
@@ -65,11 +50,11 @@ export default function IngresoCajaFijaProyectadoPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [anoSeleccionado])
 
   useEffect(() => {
     cargarDatos()
-  }, [anoSeleccionado])
+  }, [cargarDatos])
 
   const totalAnual = Object.values(totalesPorMes).reduce((sum, val) => sum + val, 0)
 

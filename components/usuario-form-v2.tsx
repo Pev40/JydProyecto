@@ -21,22 +21,31 @@ interface Cliente {
   Estado: string;
 }
 
+interface Rol {
+  IdRol: number;
+  NombreRol: string;
+  Descripcion: string;
+}
+
 interface UsuarioFormV2Props {
   usuario?: {
+    IdUsuario?: number;
     Email?: string;
     Nombre?: string;
     IdRol?: number;
     IdCliente?: number;
+    Activo?: boolean;
   };
   onSuccess?: () => void;
 }
 
-export default function UsuarioFormV2({ usuario, onSuccess }: UsuarioFormV2Props) {
+export default function UsuarioFormV2({ usuario, onSuccess: _onSuccess }: UsuarioFormV2Props) {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
   const [success, setSuccess] = useState("")
   const [clienteSeleccionado, setClienteSeleccionado] = useState<Cliente | null>(null)
+  const [roles, setRoles] = useState<Rol[]>([])
   
   const [formData, setFormData] = useState({
     email: usuario?.Email || "",
@@ -61,6 +70,23 @@ export default function UsuarioFormV2({ usuario, onSuccess }: UsuarioFormV2Props
         .catch(console.error)
     }
   }, [usuario?.IdCliente, clienteSeleccionado])
+
+  // Cargar roles disponibles
+  useEffect(() => {
+    const cargarRoles = async () => {
+      try {
+        const response = await fetch('/api/catalogos/roles')
+        if (response.ok) {
+          const data = await response.json()
+          setRoles(data.roles || [])
+        }
+      } catch (error) {
+        console.error('Error cargando roles:', error)
+      }
+    }
+
+    cargarRoles()
+  }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -124,7 +150,7 @@ export default function UsuarioFormV2({ usuario, onSuccess }: UsuarioFormV2Props
       } else {
         setError(data.error || "Error al procesar la solicitud")
       }
-    } catch {
+    } catch (_error) {
       setError("Error de conexión. Intenta nuevamente.")
     } finally {
       setLoading(false)

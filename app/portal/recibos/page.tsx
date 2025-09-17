@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useCallback } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -37,9 +37,9 @@ export default function ClienteRecibos() {
 
   useEffect(() => {
     fetchRecibos()
-  }, [])
+  }, [fetchRecibos])
 
-  const fetchRecibos = async () => {
+  const fetchRecibos = useCallback(async () => {
     try {
       setLoading(true)
       const params = new URLSearchParams()
@@ -62,7 +62,7 @@ export default function ClienteRecibos() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [filtros])
 
   const handleFiltroChange = (key: string, value: string) => {
     setFiltros((prev) => ({ ...prev, [key]: value }))

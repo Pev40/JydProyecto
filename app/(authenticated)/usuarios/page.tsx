@@ -1,12 +1,12 @@
-import { getCurrentUser } from "@/lib/auth"
-import { neon } from "@neondatabase/serverless"
+"use client"
+
+import { useEffect, useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { UserPlus, Shield, User, Building, Edit, Trash2, Eye } from "lucide-react"
+import { UserPlus, Shield, User, Building, Edit, Trash2, Eye, Loader2, ChevronLeft, ChevronRight } from "lucide-react"
 import Link from "next/link"
-import { redirect } from "next/navigation"
 
 interface Usuario {
   IdUsuario: number
@@ -21,57 +21,86 @@ interface Usuario {
   IdCliente?: number
 }
 
-const sql = neon(process.env.DATABASE_URL!)
+interface PaginationInfo {
+  page: number
+  limit: number
+  total: number
+  totalPages: number
+  hasNextPage: boolean
+  hasPrevPage: boolean
+}
 
-// Forzar renderizado dinámico
-export const dynamic = 'force-dynamic'
+export default function UsuariosPage() {
+  const [usuarios, setUsuarios] = useState<Usuario[]>([])
+  const [pagination, setPagination] = useState<PaginationInfo | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
-export default async function UsuariosPage() {
-  const user = await getCurrentUser()
-  
-  if (!user) {
-    redirect("/login")
+  useEffect(() => {
+    cargarUsuarios()
+  }, [])
+
+  const cargarUsuarios = async () => {
+    try {
+      setLoading(true)
+      setError(null)
+
+      const params = new URLSearchParams()
+      const page = searchParams.get("page") || "1"
+      params.append("page", page)
+      params.append("limit", "20")
+
+      const response = await fetch(`/api/usuarios?${params}`)
+      if (!response.ok) {
+        throw new Error('Error cargando usuarios')
+      }
+
+      const data = await response.json()
+      setUsuarios(data.usuarios || [])
+      setPagination(data.pagination)
+    } catch (error) {
+      console.error('Error cargando usuarios:', error)
+      setError("Error al cargar los usuarios. Intenta nuevamente.")
+    } finally {
+      setLoading(false)
+    }
   }
-  
-  if (user.rol === "CLIENTE") {
-    redirect("/portal")
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
+          <p className="text-gray-600">Cargando usuarios...</p>
+        </div>
+      </div>
+    )
   }
-  
-  if (user.rol !== "ADMIN") {
-    // Si no es admin pero está autenticado, redirigir a una página apropiada
-    // En lugar de crear un bucle, redirigir a una página de "no autorizado"
-    redirect("/unauthorized")
-  }  const usuarios = await sql`
-    SELECT 
-      u."IdUsuario",
-      u."Email",
-      u."NombreCompleto",
-      u."Estado" as "Activo",
-      u."FechaUltimaSesion" as "UltimoAcceso",
-      u."FechaCreacion",
-      r."Nombre" as "NombreRol",
-      c."RazonSocial" as "ClienteNombre",
-      c."IdCliente"
-    FROM "Usuario" u
-    JOIN "Rol" r ON u."IdRol" = r."IdRol"
-    LEFT JOIN "Cliente" c ON u."IdUsuario" = c."IdEncargado"
-    ORDER BY u."FechaCreacion" DESC
-  `
 
-  const estadisticas = await sql`
-    SELECT 
-      r."Nombre" as "NombreRol",
-      COUNT(*) as "Total",
-      COUNT(CASE WHEN u."Estado" = 'ACTIVO' THEN 1 END) as "Activos"
-    FROM "Usuario" u
-    JOIN "Rol" r ON u."IdRol" = r."IdRol"
-    GROUP BY r."Nombre", r."IdRol"
-    ORDER BY r."IdRol"
-  `
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-gray-900 mb-4">Error</h1>
+          <p className="text-gray-600 mb-4">{error}</p>
+          <button
+            onClick={cargarUsuarios}
+            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium"
+          >
+            Reintentar
+          </button>
+        </div>
+      </div>
+    )
+  }
 
-  const totalUsuarios = await sql`
-    SELECT COUNT(*) as total FROM "Usuario" WHERE "Estado" = 'ACTIVO'
-  `
+  // Calcular estadísticas
+  const totalUsuarios = usuarios.filter(u => u.Activo).length
+  const estadisticas = [
+    { NombreRol: "ADMIN", Activos: usuarios.filter(u => u.NombreRol === "ADMIN" && u.Activo).length, Total: usuarios.filter(u => u.NombreRol === "ADMIN").length },
+    { NombreRol: "EMPLEADO", Activos: usuarios.filter(u => u.NombreRol === "EMPLEADO" && u.Activo).length, Total: usuarios.filter(u => u.NombreRol === "EMPLEADO").length },
+    { NombreRol: "CLIENTE", Activos: usuarios.filter(u => u.NombreRol === "CLIENTE" && u.Activo).length, Total: usuarios.filter(u => u.NombreRol === "CLIENTE").length }
+  ].filter(stat => stat.Total > 0)
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -101,7 +130,7 @@ export default async function UsuariosPage() {
               <User className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{totalUsuarios[0]?.total || 0}</div>
+              <div className="text-2xl font-bold">{totalUsuarios}</div>
               <p className="text-xs text-muted-foreground">Usuarios activos</p>
             </CardContent>
           </Card>
@@ -109,7 +138,7 @@ export default async function UsuariosPage() {
           {estadisticas.map((stat) => (
             <Card key={stat.NombreRol}>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">{stat.NombreRol}S</CardTitle>
+                <CardTitle className="text-sm font-medium">{stat.NombreRol}</CardTitle>
                 {stat.NombreRol === "ADMIN" ? (
                   <Shield className="h-4 w-4 text-red-500" />
                 ) : stat.NombreRol === "EMPLEADO" ? (
@@ -120,41 +149,34 @@ export default async function UsuariosPage() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">{stat.Activos}</div>
-                <p className="text-xs text-muted-foreground">
-                  de {stat.Total} total{stat.Total !== 1 ? "es" : ""}
-                </p>
+                <p className="text-xs text-muted-foreground">de {stat.Total} total</p>
               </CardContent>
             </Card>
           ))}
         </div>
 
-        {/* Lista de Usuarios */}
+        {/* Tabla de Usuarios */}
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <User className="h-5 w-5" />
-              Usuarios del Sistema
-            </CardTitle>
+            <CardTitle>Usuarios del Sistema</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Usuario</TableHead>
+                    <TableHead>Nombre</TableHead>
                     <TableHead>Email</TableHead>
                     <TableHead>Rol</TableHead>
-                    <TableHead>Cliente Asociado</TableHead>
+                    <TableHead>Cliente</TableHead>
                     <TableHead>Estado</TableHead>
                     <TableHead>Último Acceso</TableHead>
-                    <TableHead>Fecha Registro</TableHead>
+                    <TableHead>Fecha Creación</TableHead>
                     <TableHead className="text-right">Acciones</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {usuarios.map((usuarioRow) => {
-                    const usuario = usuarioRow as Usuario
-                    return (
+                  {usuarios.map((usuario) => (
                     <TableRow key={usuario.IdUsuario}>
                       <TableCell>
                         <div className="font-medium">{usuario.Nombre}</div>
@@ -220,7 +242,7 @@ export default async function UsuariosPage() {
                               <Edit className="h-4 w-4" />
                             </Button>
                           </Link>
-                          {usuario.IdUsuario !== user.id && (
+                          {usuario.IdUsuario !== 1 && ( // Asumiendo que el usuario 1 es admin principal
                             <Button
                               variant="outline"
                               size="sm"
@@ -232,8 +254,7 @@ export default async function UsuariosPage() {
                         </div>
                       </TableCell>
                     </TableRow>
-                    )
-                  })}
+                  ))}
                 </TableBody>
               </Table>
             </div>
@@ -253,6 +274,42 @@ export default async function UsuariosPage() {
             )}
           </CardContent>
         </Card>
+
+        {/* Paginación */}
+        {pagination && pagination.totalPages > 1 && (
+          <div className="flex items-center justify-between mt-6">
+            <div className="text-sm text-gray-700">
+              Mostrando {((pagination.page - 1) * pagination.limit) + 1} a {Math.min(pagination.page * pagination.limit, pagination.total)} de {pagination.total} resultados
+            </div>
+            <div className="flex items-center space-x-2">
+              {pagination.hasPrevPage && (
+                <Link
+                  href={`/usuarios?${new URLSearchParams({ ...Object.fromEntries(searchParams), page: (pagination.page - 1).toString() }).toString()}`}
+                >
+                  <Button variant="outline" size="sm">
+                    <ChevronLeft className="h-4 w-4 mr-1" />
+                    Anterior
+                  </Button>
+                </Link>
+              )}
+
+              <span className="text-sm text-gray-700">
+                Página {pagination.page} de {pagination.totalPages}
+              </span>
+
+              {pagination.hasNextPage && (
+                <Link
+                  href={`/usuarios?${new URLSearchParams({ ...Object.fromEntries(searchParams), page: (pagination.page + 1).toString() }).toString()}`}
+                >
+                  <Button variant="outline" size="sm">
+                    Siguiente
+                    <ChevronRight className="h-4 w-4 ml-1" />
+                  </Button>
+                </Link>
+              )}
+            </div>
+          </div>
+        )}
       </main>
     </div>
   )

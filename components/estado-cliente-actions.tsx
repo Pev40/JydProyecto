@@ -17,7 +17,7 @@ interface EstadoClienteActionsProps {
   razonSocial: string
 }
 
-export function EstadoClienteActions({ clienteId, estadoActual, razonSocial }: EstadoClienteActionsProps) {
+export function EstadoClienteActions({ clienteId, estadoActual, razonSocial: _razonSocial }: EstadoClienteActionsProps) {
   const [loading, setLoading] = useState(false)
   const router = useRouter()
 

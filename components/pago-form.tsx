@@ -12,10 +12,16 @@ import { Textarea } from "@/components/ui/textarea"
 import { toast } from "@/hooks/use-toast"
 import { Loader2, Save, Upload, X, AlertCircle } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import type { Cliente } from "@/lib/db"
+
 
 interface PagoFormProps {
-  clientes: Cliente[]
+  clientes: {
+    IdCliente: number;
+    RazonSocial: string;
+    RucDni: string;
+    MontoFijoMensual: number;
+    ServicioNombre?: string;
+  }[]
   catalogos: {
     bancos: Banco[]
     servicios: Servicio[]
