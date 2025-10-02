@@ -222,20 +222,78 @@ export async function getPagosByClienteId(clienteId: number): Promise<Pago[]> {
   }
 }
 
-export async function getCatalogos() {
+// Tipos para catálogos
+export interface Clasificacion {
+  IdClasificacion: number
+  Codigo: string
+  Descripcion: string
+  Color: string
+}
+
+export interface Cartera {
+  IdCartera: number
+  Nombre: string
+}
+
+interface CategoriaEmpresaItem {
+  IdCategoriaEmpresa: number
+  Nombre: string
+  Descripcion: string
+}
+
+interface ServicioItem {
+  IdServicio: number
+  Nombre: string
+  Descripcion: string
+}
+
+interface BancoItem {
+  IdBanco: number
+  Nombre: string
+}
+
+interface UsuarioItem {
+  IdUsuario: number
+  NombreCompleto: string
+  Email: string
+}
+
+export interface TipoNotificacionItem {
+  IdTipoNotificacion: number
+  Nombre: string
+}
+
+export async function getCatalogos(): Promise<{
+  clasificaciones: Clasificacion[]
+  carteras: Cartera[]
+  categorias: CategoriaEmpresaItem[]
+  servicios: ServicioItem[]
+  bancos: BancoItem[]
+  usuarios: UsuarioItem[]
+  tiposNotificacion: TipoNotificacionItem[]
+}> {
   if (!sql) {
     throw new Error("Base de datos no disponible")
   }
 
   try {
-    const [clasificaciones, carteras, categorias, servicios, bancos, usuarios] = await Promise.all([
+    const [clasificaciones, carteras, categorias, servicios, bancos, usuarios, tiposNotificacion] = (await Promise.all([
       sql`SELECT "IdClasificacion", "Codigo", "Descripcion", "Color" FROM "Clasificacion" ORDER BY "Descripcion"`,
       sql`SELECT "IdCartera", "Nombre" FROM "Cartera" ORDER BY "Nombre"`,
       sql`SELECT "IdCategoriaEmpresa", "Nombre", "Descripcion" FROM "CategoriaEmpresa" ORDER BY "Nombre"`,
       sql`SELECT "IdServicio", "Nombre", "Descripcion" FROM "Servicio" ORDER BY "Nombre"`,
       sql`SELECT "IdBanco", "Nombre" FROM "Banco" ORDER BY "Nombre"`,
-      sql`SELECT "IdUsuario", "NombreCompleto", "Email" FROM "Usuario" WHERE "Estado" = 'ACTIVO' ORDER BY "NombreCompleto"`
-    ])
+      sql`SELECT "IdUsuario", "NombreCompleto", "Email" FROM "Usuario" WHERE "Estado" = 'ACTIVO' ORDER BY "NombreCompleto"`,
+      sql`SELECT "IdTipoNotificacion", "Nombre" FROM "TipoNotificacion" ORDER BY "Nombre"`
+    ])) as [
+      Clasificacion[],
+      Cartera[],
+      CategoriaEmpresaItem[],
+      ServicioItem[],
+      BancoItem[],
+      UsuarioItem[],
+      TipoNotificacionItem[]
+    ]
 
     return {
       clasificaciones,
@@ -243,7 +301,16 @@ export async function getCatalogos() {
       categorias,
       servicios,
       bancos,
-      usuarios
+      usuarios,
+      tiposNotificacion
+    } as {
+      clasificaciones: Clasificacion[]
+      carteras: Cartera[]
+      categorias: CategoriaEmpresaItem[]
+      servicios: ServicioItem[]
+      bancos: BancoItem[]
+      usuarios: UsuarioItem[]
+      tiposNotificacion: TipoNotificacionItem[]
     }
   } catch (error) {
     console.error("Error al obtener catálogos:", error)
@@ -651,6 +718,28 @@ export async function getCompromisosPago(clienteId?: number): Promise<Compromiso
   } catch (error) {
     console.error("Error fetching payment commitments:", error)
     throw new Error("Error al obtener compromisos de pago")
+  }
+}
+
+// Obtener saldo pendiente por cliente (sumatoria de compromisos en estado PENDIENTE)
+export async function getObtenerSaldoPendientePorCliente(clienteId: number): Promise<number> {
+  if (!sql) {
+    throw new Error("Base de datos no disponible")
+  }
+
+  try {
+    const result = await sql`
+      SELECT COALESCE(SUM(cp."MontoCompromiso"), 0) AS "SaldoPendiente"
+      FROM "CompromisoPago" cp
+      WHERE cp."IdCliente" = ${clienteId}
+        AND cp."Estado" = 'PENDIENTE'
+    `
+
+    const saldo = Number(result[0]?.SaldoPendiente || 0)
+    return saldo
+  } catch (error) {
+    console.error("Error al obtener saldo pendiente del cliente:", error)
+    throw new Error("Error al obtener saldo pendiente del cliente")
   }
 }
 

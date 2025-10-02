@@ -8,6 +8,8 @@ import Link from "next/link"
 import { ClientesFiltros } from "@/components/clientes-filtros"
 import { EstadoClienteActions } from "@/components/estado-cliente-actions"
 
+export const revalidate = 0
+
 interface PageProps {
   searchParams: {
     ultimoDigito?: string
@@ -28,7 +30,8 @@ export default async function ClientesPage({ searchParams }: PageProps) {
     cartera: searchParams.cartera && searchParams.cartera !== "ALL" ? Number.parseInt(searchParams.cartera) : undefined,
   }
 
-  const [clientesResult, catalogos] = await Promise.all([getClientes(filtros), getCatalogos()])
+  const clientesResult = await getClientes(filtros)
+  const catalogos = await getCatalogos()
 
   // Asegurar que clientes es un array
   const clientes = Array.isArray(clientesResult) ? clientesResult : []
@@ -104,7 +107,13 @@ export default async function ClientesPage({ searchParams }: PageProps) {
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Componente de Filtros */}
-        <ClientesFiltros catalogos={catalogos} searchParams={searchParams} />
+        <ClientesFiltros 
+          catalogos={{ 
+            clasificaciones: catalogos.clasificaciones, 
+            carteras: catalogos.carteras 
+          }} 
+          searchParams={searchParams} 
+        />
 
         {/* Filtros rápidos por dígito */}
         <div className="mb-6">

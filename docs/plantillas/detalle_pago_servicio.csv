@@ -1,0 +1,4 @@
+IdPago,MesServicio,Servicio,Monto,IdServicioAdicional,TipoServicio,PeriodoServicio
+101,2024-05-01,Contabilidad,500.00,,,2024-05-01
+101,2024-06-01,Contabilidad,500.00,,,2024-06-01
+

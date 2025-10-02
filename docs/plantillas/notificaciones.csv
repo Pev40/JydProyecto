@@ -1,0 +1,3 @@
+IdCliente,IdTipoNotificacion,Contenido,IdResponsable,Estado,FechaEnvio
+1,1,"Estimado {cliente}, su pago vence el {fecha}.",1,ENVIADO,2024-06-10
+

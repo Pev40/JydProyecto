@@ -1,0 +1,163 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[spanish]{babel}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{geometry}
+\usepackage{longtable}
+\usepackage{array}
+\usepackage{hyperref}
+\geometry{margin=2.5cm}
+
+\title{Guía de Llenado de Excel para Importación de Datos}
+\author{J\&D Consultores de Negocios}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\section*{Objetivo}
+Este documento explica exactamente qué columnas debe completar en cada hoja del Excel, con el tipo de dato, si es obligatorio y \textbf{por qué se solicita}. Siga el \textbf{orden de llenado recomendado} para evitar errores.
+
+\subsection*{Recomendaciones generales}
+\begin{itemize}
+  \item Formato de fecha: \texttt{YYYY-MM-DD}. Para meses de servicio, use el día 01 (p.ej., \texttt{2024-06-01}).
+  \item N\'umeros: use punto decimal (p.ej., \texttt{500.00}).
+  \item Booleanos: \texttt{TRUE}/\texttt{FALSE}.
+  \item IDs: cuando se pida un \texttt{IdX}, debe existir previamente o cargarse en otra hoja.
+\end{itemize}
+
+\section{Orden recomendado de llenado}
+\begin{enumerate}
+  \item Catálogos (opcional): Bancos, Servicios, Clasificaciones, Categorías.
+  \item Carteras.
+  \item Clientes.
+  \item Pagos (y \emph{DetallePagoServicio} si un pago cubre varios meses/servicios).
+  \item Compromisos (opcional).
+  \item Notificaciones (opcional).
+  \item Servicios Adicionales (opcional).
+\end{enumerate}
+
+\section{Hojas del Excel}
+
+\subsection{Carteras}
+\begin{longtable}{|p{3.2cm}|p{2.2cm}|p{2.2cm}|p{4.8cm}|}
+\hline
+\textbf{Campo} & \textbf{Tipo} & \textbf{Obligatorio} & \textbf{Por qué se solicita} \\
+\hline
+Nombre & Texto & Sí & Identifica la cartera/comunidad de clientes. Permite segmentar gestión. \\
+IdEncargado & Número & No & Vincula un responsable (usuario) a la cartera. \\
+Estado & Texto & No & Estado operativo (p.ej., ACTIVA/INACTIVA). \\
+\hline
+\end{longtable}
+
+\subsection{Clientes}
+\begin{longtable}{|p{3.2cm}|p{2.2cm}|p{2.2cm}|p{6.0cm}|}
+\hline
+\textbf{Campo} & \textbf{Tipo} & \textbf{Obligatorio} & \textbf{Por qué se solicita} \\
+\hline
+RazonSocial & Texto & Sí & Identificación principal del cliente. \\
+NombreContacto & Texto & No & Contacto para comunicaciones. \\
+RucDni & Texto & Sí & Identificador único. Permite validar y calcular último dígito de RUC. \\
+IdClasificacion & Número & No & Segmentación (A/B/C/...). Si omite, se usa la inicial. \\
+IdCartera & Número & No & Relación con cartera para gestión. \\
+IdEncargado & Número & No & Asigna un responsable del cliente. \\
+IdServicio & Número & No & Servicio principal contratado. \\
+MontoFijoMensual & Número & No & Base de facturación/seguimiento mensual. \\
+AplicaMontoFijo & Boolean & No & Indica si se usa el monto fijo para meses. \\
+IdCategoriaEmpresa & Número & No & Segmenta por tamaño/sector. \\
+Email & Texto & No & Envío de notificaciones/email. \\
+Telefono & Texto & No & Envío de WhatsApp/SMS. \\
+FechaRegistro & Fecha & No & Trazabilidad de altas. \\
+FechaVencimiento & Fecha & No & Gestión de renovación/fin de servicio. \\
+\hline
+\end{longtable}
+
+\subsection{Pagos}
+\begin{longtable}{|p{3.2cm}|p{2.2cm}|p{2.2cm}|p{6.0cm}|}
+\hline
+\textbf{Campo} & \textbf{Tipo} & \textbf{Obligatorio} & \textbf{Por qué se solicita} \\
+\hline
+IdCliente & Número & Sí & Determina a quién corresponde el pago. \\
+Fecha & Fecha & No & Fecha de operación; por defecto, ahora. \\
+IdBanco & Número & No & Para reportes y conciliación bancaria. \\
+Monto & Número & Sí & Importe del pago. \\
+Concepto & Texto & Sí & Contexto del pago (p.ej. mes cubierto). \\
+MedioPago & Texto & Recomendado & Estadística/conciliación por canal (TRANSFERENCIA, EFECTIVO, etc.). \\
+UrlComprobante & Texto & No & Evidencia del pago para auditoría. \\
+MesServicio & Fecha & Recomendado & Si cubre un mes fijo, indique el mes (\texttt{YYYY-MM-01}). \\
+Estado & Texto & No & Flujo del pago (PENDIENTE/CONFIRMADO/CANCELADO). \\
+Observaciones & Texto & No & Nro operación u otros detalles. \\
+\hline
+\end{longtable}
+
+\subsection{DetallePagoServicio (opcional)}
+\begin{longtable}{|p{3.2cm}|p{2.2cm}|p{2.2cm}|p{6.0cm}|}
+\hline
+\textbf{Campo} & \textbf{Tipo} & \textbf{Obligatorio} & \textbf{Por qué se solicita} \\
+\hline
+IdPago & Número & Sí & Identifica el pago al que pertenece el detalle. \\
+MesServicio & Fecha & Sí & Mes cubierto (\texttt{YYYY-MM-01}). \\
+Servicio & Texto & Recomendado & Servicio cubierto por ese pago. \\
+Monto & Número & Sí & Porción del pago asignada al mes/servicio. \\
+IdServicioAdicional & Número & No & Si el detalle paga un servicio adicional. \\
+TipoServicio & Texto & No & FIJO/ADICIONAL para análisis. \\
+PeriodoServicio & Fecha & No & Equivalente a MesServicio en algunos flujos. \\
+\hline
+\end{longtable}
+
+\subsection{Compromisos (opcional)}
+\begin{longtable}{|p{3.2cm}|p{2.2cm}|p{2.2cm}|p{6.0cm}|}
+\hline
+\textbf{Campo} & \textbf{Tipo} & \textbf{Obligatorio} & \textbf{Por qué se solicita} \\
+\hline
+IdCliente & Número & Sí & Cliente que asume el compromiso. \\
+FechaCompromiso & Fecha & Sí & Control de vencimientos del compromiso. \\
+MontoCompromiso & Número & Sí & Importe comprometido. \\
+IdResponsable & Número & No & Seguimiento por usuario del equipo. \\
+Observaciones & Texto & No & Condiciones, acuerdos o notas. \\
+Estado & Texto & No & PENDIENTE/CONFIRMADO/CANCELADO. \\
+\hline
+\end{longtable}
+
+\subsection{Notificaciones (opcional)}
+\begin{longtable}{|p{3.2cm}|p{2.2cm}|p{2.2cm}|p{6.0cm}|}
+\hline
+\textbf{Campo} & \textbf{Tipo} & \textbf{Obligatorio} & \textbf{Por qué se solicita} \\
+\hline
+IdCliente & Número & Sí & Destinatario de la notificación. \\
+IdTipoNotificacion & Número & Sí & Canal (WhatsApp/Email/SMS) definido en catálogos. \\
+Contenido & Texto & Sí & Mensaje enviado al cliente. \\
+IdResponsable & Número & No & Usuario que ejecuta el envío. \\
+Estado & Texto & No & ENVIADO/PENDIENTE/ERROR (histórico/operativo). \\
+FechaEnvio & Fecha & No & Para trazabilidad histórica. \\
+\hline
+\end{longtable}
+
+\subsection{Servicios Adicionales (opcional)}
+\begin{longtable}{|p{3.2cm}|p{2.2cm}|p{2.2cm}|p{6.0cm}|}
+\hline
+\textbf{Campo} & \textbf{Tipo} & \textbf{Obligatorio} & \textbf{Por qué se solicita} \\
+\hline
+IdCliente & Número & Sí & Cliente que recibió el servicio adicional. \\
+NombreServicio & Texto & Sí & Identifica el servicio adicional. \\
+Descripcion & Texto & No & Detalle del servicio prestado. \\
+Monto & Número & Sí & Importe del servicio. \\
+Fecha & Fecha & Sí & Fecha del servicio. \\
+Estado & Texto & No & PENDIENTE/FACTURADO/PAGADO/CANCELADO. \\
+IdResponsable & Número & No & Usuario que registra/gestiona el servicio. \\
+\hline
+\end{longtable}
+
+\section*{Plantillas CSV}
+Se incluyen plantillas en la carpeta \texttt{docs/plantillas/}: \texttt{carteras.csv}, \texttt{clientes.csv}, \texttt{pagos.csv}, \texttt{detalle\_pago\_servicio.csv}, \texttt{compromisos.csv}, \texttt{notificaciones.csv}, \texttt{servicios\_adicionales.csv}.
+
+\section*{Cómo usar este documento en Overleaf}
+\begin{enumerate}
+  \item Cree un proyecto en Overleaf y cargue este archivo (\texttt{guia-excel-overleaf.tex}).
+  \item Compile (XeLaTeX o pdfLaTeX). Descargue el PDF para entregarlo a su equipo.
+  \item Entregue también las plantillas CSV para que sean completadas.
+\end{enumerate}
+
+\end{document}
+
+

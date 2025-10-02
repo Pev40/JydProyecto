@@ -1,0 +1,4 @@
+IdCliente,Fecha,IdBanco,Monto,Concepto,MedioPago,UrlComprobante,MesServicio,Estado,Observaciones
+1,2024-06-05,1,500.00,"Pago mensual junio",TRANSFERENCIA,,2024-06-01,CONFIRMADO,"Nro op 123456"
+2,2024-07-03,2,800.00,"Pago mensual julio",YAPE,,2024-07-01,PENDIENTE,
+

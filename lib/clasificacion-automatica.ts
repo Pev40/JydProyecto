@@ -237,7 +237,7 @@ export class ClasificacionAutomatica {
   /**
    * Obtiene el cronograma SUNAT para un cliente específico
    */
-  private static async obtenerCronogramaSunatCliente(ultimoDigitoRUC: number, año: number) {
+  private static async obtenerCronogramaSunatCliente(ultimoDigitoRUC: number, año: number): Promise<CronogramaItem[]> {
     if (!sql) return []
 
     try {
@@ -248,14 +248,27 @@ export class ClasificacionAutomatica {
       else if ([6, 7].includes(ultimoDigitoRUC)) digitoBusqueda = 6
       else if ([8, 9].includes(ultimoDigitoRUC)) digitoBusqueda = 8
 
-      const cronograma = await sql`
-        SELECT "UltimoDigito", "Anio", "FechaVencimiento"
+      const cronograma = (await sql`
+        SELECT 
+          "DigitoRUC", 
+          "Año", 
+          "Mes", 
+          "Dia", 
+          "MesVencimiento",
+          make_date(
+            CASE 
+              WHEN "MesVencimiento" = 12 THEN "Año" + 1
+              ELSE "Año"
+            END,
+            "MesVencimiento",
+            "Dia"
+          ) AS "FechaVencimiento"
         FROM "CronogramaSunat" 
-        WHERE "Anio" = ${año}
-          AND "UltimoDigito" = ${digitoBusqueda}
-        ORDER BY "FechaVencimiento" ASC
-      `
-
+        WHERE "Año" = ${año}
+          AND "DigitoRUC" = ${digitoBusqueda}
+        ORDER BY "Dia" ASC
+      `) as unknown as CronogramaItem[];
+      
       return cronograma
     } catch (error) {
       console.error("Error obteniendo cronograma SUNAT:", error)

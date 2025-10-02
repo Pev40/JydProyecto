@@ -68,7 +68,7 @@ export function NotificacionForm({ clientes, catalogos }: NotificacionFormProps)
         contenidoFinal = contenidoFinal
           .replace("{cliente}", clienteSeleccionado.RazonSocial)
           .replace("{contacto}", clienteSeleccionado.NombreContacto || "")
-          .replace("{monto}", clienteSeleccionado.SaldoPendiente?.toFixed(2) || "0.00")
+          .replace("{monto}", Number(clienteSeleccionado.SaldoPendiente ?? 0).toFixed(2))
       }
 
       const response = await fetch("/api/notificaciones", {
@@ -149,7 +149,7 @@ export function NotificacionForm({ clientes, catalogos }: NotificacionFormProps)
                   <div className="flex flex-col">
                     <span>{cliente.RazonSocial}</span>
                     <span className="text-xs text-gray-500">
-                      {cliente.ClasificacionCodigo} - Saldo: S/ {cliente.SaldoPendiente?.toFixed(2) || "0.00"}
+                      {cliente.ClasificacionCodigo} - Saldo: S/ {Number(cliente.SaldoPendiente ?? 0).toFixed(2)}
                     </span>
                   </div>
                 </SelectItem>
@@ -168,7 +168,7 @@ export function NotificacionForm({ clientes, catalogos }: NotificacionFormProps)
               <SelectValue placeholder="Seleccione tipo" />
             </SelectTrigger>
             <SelectContent>
-              {catalogos.tiposNotificacion.map((tipo) => (
+              {(catalogos.tiposNotificacion ?? []).map((tipo) => (
                 <SelectItem key={tipo.IdTipoNotificacion} value={tipo.IdTipoNotificacion.toString()}>
                   <div className="flex items-center gap-2">
                     {getIconoTipo(tipo.Nombre)}
@@ -210,7 +210,7 @@ export function NotificacionForm({ clientes, catalogos }: NotificacionFormProps)
               <div>
                 <span className="font-medium">Saldo Pendiente:</span>
                 <p className="text-red-600 font-medium">
-                  S/ {clienteSeleccionado.SaldoPendiente?.toFixed(2) || "0.00"}
+                  S/ {Number(clienteSeleccionado.SaldoPendiente ?? 0).toFixed(2)}
                 </p>
               </div>
             </div>
@@ -285,7 +285,7 @@ export function NotificacionForm({ clientes, catalogos }: NotificacionFormProps)
               {formData.contenido
                 .replace("{cliente}", clienteSeleccionado.RazonSocial)
                 .replace("{contacto}", clienteSeleccionado.NombreContacto || "")
-                .replace("{monto}", clienteSeleccionado.SaldoPendiente?.toFixed(2) || "0.00")}
+                .replace("{monto}", Number(clienteSeleccionado.SaldoPendiente ?? 0).toFixed(2))}
             </div>
           </CardContent>
         </Card>

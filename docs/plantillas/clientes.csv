@@ -1,0 +1,4 @@
+RazonSocial,NombreContacto,RucDni,IdClasificacion,IdCartera,IdEncargado,IdServicio,MontoFijoMensual,AplicaMontoFijo,IdCategoriaEmpresa,Email,Telefono,FechaRegistro,FechaVencimiento
+EMPRESA ABC SAC,Juan Pérez,20123456789,1,1,1,1,500.00,TRUE,2,contacto@abc.com,999888777,2024-05-10,
+CONSULTORA XYZ EIRL,María García,20678901234,2,2,2,1,800.00,TRUE,1,contacto@xyz.com,988776655,2024-06-01,2024-12-31
+

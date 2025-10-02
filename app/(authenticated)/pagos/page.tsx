@@ -7,6 +7,8 @@ import { ArrowLeft, Plus, DollarSign, FileText } from "lucide-react"
 import { PagoActions } from "@/components/pago-actions"
 import Link from "next/link"
 
+export const revalidate = 0
+
 export default async function PagosPage() {
   const pagos = await getPagos()
 

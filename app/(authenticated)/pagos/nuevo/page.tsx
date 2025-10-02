@@ -5,6 +5,8 @@ import { ArrowLeft, DollarSign } from "lucide-react"
 import Link from "next/link"
 import { PagoForm } from "@/components/pago-form"
 
+export const revalidate = 0
+
 interface PageProps {
   searchParams: {
     cliente?: string

@@ -1,12 +1,22 @@
-import { getClientes, getCatalogos } from "@/lib/queries"
+import { getClientes, getCatalogos, getObtenerSaldoPendientePorCliente } from "@/lib/queries"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { ArrowLeft, Send } from "lucide-react"
 import Link from "next/link"
 import { NotificacionForm } from "@/components/notificacion-form"
 
+export const revalidate = 0
+
 export default async function EnviarNotificacionPage() {
-  const [clientes, catalogos] = await Promise.all([getClientes(), getCatalogos()])
+  const [clientesBase, catalogos] = await Promise.all([getClientes(), getCatalogos()])
+  console.log(clientesBase)
+  // Enriquecer cada cliente con su SaldoPendiente calculado
+  const clientes = await Promise.all(
+    clientesBase.map(async (c) => ({
+      ...c,
+      SaldoPendiente: await getObtenerSaldoPendientePorCliente(c.IdCliente),
+    }))
+  )
 
   return (
     <div className="min-h-screen bg-gray-50">
