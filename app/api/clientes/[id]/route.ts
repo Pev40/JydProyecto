@@ -94,12 +94,37 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
 
     const clientes = await sql`
       SELECT 
-        "IdCliente",
-        "RazonSocial",
-        "RucDni",
-        "Estado"
-      FROM "Cliente"
-      WHERE "IdCliente" = ${clienteId}
+        c."IdCliente",
+        c."RazonSocial",
+        c."NombreContacto",
+        c."RucDni",
+        c."UltimoDigitoRUC",
+        c."IdClasificacion",
+        cl."Codigo" as "ClasificacionCodigo",
+        cl."Descripcion" as "ClasificacionDescripcion",
+        cl."Color" as "ClasificacionColor",
+        c."IdCartera",
+        ca."Nombre" as "CarteraNombre",
+        c."IdEncargado",
+        u."NombreCompleto" as "EncargadoNombre",
+        c."IdServicio",
+        s."Nombre" as "ServicioNombre",
+        c."MontoFijoMensual",
+        c."AplicaMontoFijo",
+        c."IdCategoriaEmpresa",
+        ce."Nombre" as "CategoriaEmpresa",
+        c."FechaRegistro",
+        c."FechaVencimiento",
+        c."Email",
+        c."Telefono",
+        c."Estado"
+      FROM "Cliente" c
+      LEFT JOIN "Clasificacion" cl ON c."IdClasificacion" = cl."IdClasificacion"
+      LEFT JOIN "Cartera" ca ON c."IdCartera" = ca."IdCartera"
+      LEFT JOIN "Usuario" u ON c."IdEncargado" = u."IdUsuario"
+      LEFT JOIN "Servicio" s ON c."IdServicio" = s."IdServicio"
+      LEFT JOIN "CategoriaEmpresa" ce ON c."IdCategoriaEmpresa" = ce."IdCategoriaEmpresa"
+      WHERE c."IdCliente" = ${clienteId}
     `
 
     if (clientes.length === 0) {

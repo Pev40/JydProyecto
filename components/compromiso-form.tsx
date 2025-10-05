@@ -7,11 +7,18 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useModal } from "@/components/ui/modal"
 import { Loader2, Save } from "lucide-react"
 
 interface CompromisoFormProps {
-  cliente: {
+  clientes?: {
+    IdCliente: number
+    RazonSocial: string
+    MontoFijoMensual: number
+    RucDni: string
+  }[]
+  cliente?: {
     IdCliente: number
     RazonSocial: string
     MontoFijoMensual: number
@@ -25,16 +32,17 @@ interface CompromisoFormProps {
   isEditing?: boolean
 }
 
-export function CompromisoForm({ cliente, compromiso, isEditing = false }: CompromisoFormProps) {
+export function CompromisoForm({ clientes, cliente, compromiso, isEditing = false }: CompromisoFormProps) {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const { Modal, showError, showSuccess } = useModal()
 
   const [formData, setFormData] = useState({
+    idCliente: cliente?.IdCliente?.toString() || "",
     fechaCompromiso: compromiso?.FechaCompromiso ? 
       new Date(compromiso.FechaCompromiso).toISOString().split('T')[0] : 
       new Date().toISOString().split('T')[0],
-    montoCompromiso: compromiso?.MontoCompromiso || cliente.MontoFijoMensual || "",
+    montoCompromiso: compromiso?.MontoCompromiso || cliente?.MontoFijoMensual || "",
     observaciones: compromiso?.Observaciones || "",
   })
 
@@ -44,12 +52,12 @@ export function CompromisoForm({ cliente, compromiso, isEditing = false }: Compr
 
     try {
       // Validaciones básicas
-      if (!formData.fechaCompromiso || !formData.montoCompromiso) {
+      if (!formData.idCliente || !formData.fechaCompromiso || !formData.montoCompromiso) {
         showError("Datos requeridos", "Por favor, complete todos los campos obligatorios.")
         return
       }
 
-      const url = isEditing ? `/api/compromisos/${compromiso.IdCompromisoPago}` : "/api/compromisos"
+      const url = isEditing && compromiso ? `/api/compromisos/${compromiso.IdCompromisoPago}` : "/api/compromisos"
       const method = isEditing ? "PUT" : "POST"
 
       const response = await fetch(url, {
@@ -58,7 +66,7 @@ export function CompromisoForm({ cliente, compromiso, isEditing = false }: Compr
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          idCliente: cliente.IdCliente,
+          idCliente: Number.parseInt(formData.idCliente),
           fechaCompromiso: formData.fechaCompromiso,
           montoCompromiso: Number.parseFloat(formData.montoCompromiso.toString()),
           observaciones: formData.observaciones,
@@ -74,7 +82,11 @@ export function CompromisoForm({ cliente, compromiso, isEditing = false }: Compr
             ? "El compromiso de pago ha sido actualizado correctamente."
             : "El compromiso de pago ha sido registrado exitosamente en el sistema.",
           () => {
-            router.push(`/clientes/${cliente.IdCliente}`)
+            if (formData.idCliente) {
+              router.push(`/clientes/${formData.idCliente}`)
+            } else {
+              router.push('/clientes')
+            }
           }
         )
       } else {
@@ -114,16 +126,40 @@ export function CompromisoForm({ cliente, compromiso, isEditing = false }: Compr
       <Modal />
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Información del Cliente */}
-        <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-          <h3 className="font-medium text-blue-900 mb-2">Cliente</h3>
-          <p className="text-blue-700">{cliente.RazonSocial}</p>
-          <p className="text-sm text-blue-600">
-            Monto fijo mensual: S/ {cliente.MontoFijoMensual.toLocaleString('es-PE', { minimumFractionDigits: 2 })}
-          </p>
-        </div>
+        {cliente && (
+          <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+            <h3 className="font-medium text-blue-900 mb-2">Cliente</h3>
+            <p className="text-blue-700">{cliente.RazonSocial}</p>
+            <p className="text-sm text-blue-600">
+              Monto fijo mensual: S/ {cliente.MontoFijoMensual.toLocaleString('es-PE', { minimumFractionDigits: 2 })}
+            </p>
+          </div>
+        )}
 
         {/* Información del Compromiso */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Cliente Selector - only show if clientes array is provided and no specific cliente is set */}
+          {clientes && !cliente && (
+            <div className="space-y-2">
+              <Label htmlFor="idCliente">Cliente *</Label>
+              <Select value={formData.idCliente} onValueChange={(value) => handleInputChange("idCliente", value)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Seleccione cliente" />
+                </SelectTrigger>
+                <SelectContent>
+                  {clientes.map((cliente) => (
+                    <SelectItem key={cliente.IdCliente} value={cliente.IdCliente.toString()}>
+                      <div className="flex flex-col">
+                        <span>{cliente.RazonSocial}</span>
+                        <span className="text-xs text-gray-500">{cliente.RucDni}</span>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
           <div className="space-y-2">
             <Label htmlFor="fechaCompromiso">Fecha de Compromiso *</Label>
             <Input
@@ -173,7 +209,15 @@ export function CompromisoForm({ cliente, compromiso, isEditing = false }: Compr
           <Button 
             type="button" 
             variant="outline" 
-            onClick={() => router.push(`/clientes/${cliente.IdCliente}`)}
+            onClick={() => {
+              if (cliente?.IdCliente) {
+                router.push(`/clientes/${cliente.IdCliente}`)
+              } else if (formData.idCliente) {
+                router.push(`/clientes/${formData.idCliente}`)
+              } else {
+                router.push('/compromisos')
+              }
+            }}
           >
             Cancelar
           </Button>

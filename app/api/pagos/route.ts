@@ -199,67 +199,101 @@ export async function GET(request: NextRequest) {
     const limit = Number.parseInt(searchParams.get("limit") || "20")
     const offset = (page - 1) * limit
 
+    // Construir condiciones WHERE usando template literals
     const whereConditions = []
-    const queryParams: string[] = []
-
+    
     if (clienteId) {
-      whereConditions.push(`p."IdCliente" = ${clienteId}`)
+      whereConditions.push(sql`p."IdCliente" = ${clienteId}`)
     }
 
     if (estado) {
-      whereConditions.push(`p."Estado" = '${estado}'`)
+      whereConditions.push(sql`p."Estado" = ${estado}`)
     }
 
-    const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(" AND ")}` : ""
+    let pagos = []
+    let total = 0
 
-    // Consulta principal con información completa
-    const queryPagos = `
-      SELECT 
-        p.*,
-        c."RazonSocial" as "ClienteRazonSocial",
-        c."RucDni" as "ClienteRucDni",
-        c."Email" as "ClienteEmail",
-        b."Nombre" as "BancoNombre",
-        -- Servicios incluidos en este pago
-        COALESCE(
-          JSON_AGG(
-            CASE WHEN dps."IdDetallePagoServicio" IS NOT NULL THEN
-              JSON_BUILD_OBJECT(
-                'tipo', dps."TipoServicio",
-                'descripcion', dps."Descripcion",
-                'monto', dps."Monto",
-                'periodo', dps."PeriodoServicio"
-              )
-            END
-          ) FILTER (WHERE dps."IdDetallePagoServicio" IS NOT NULL),
-          '[]'::json
-        ) as "ServiciosIncluidos"
-      FROM "Pago" p
-      JOIN "Cliente" c ON p."IdCliente" = c."IdCliente"
-      LEFT JOIN "Banco" b ON p."IdBanco" = b."IdBanco"
-      LEFT JOIN "DetallePagoServicio" dps ON p."IdPago" = dps."IdPago"
-      ${whereClause}
-      GROUP BY p."IdPago", c."RazonSocial", c."RucDni", c."Email", b."Nombre"
-      ORDER BY p."Fecha" DESC
-      LIMIT ${limit} OFFSET ${offset}
-    `
+    try {
+      // Consulta principal - simplificada sin JSON_AGG por ahora
+      if (clienteId) {
+        pagos = await sql`
+          SELECT 
+            p.*,
+            c."RazonSocial" as "ClienteRazonSocial",
+            c."RucDni" as "ClienteRucDni",
+            c."Email" as "ClienteEmail",
+            b."Nombre" as "BancoNombre"
+          FROM "Pago" p
+          JOIN "Cliente" c ON p."IdCliente" = c."IdCliente"
+          LEFT JOIN "Banco" b ON p."IdBanco" = b."IdBanco"
+          WHERE p."IdCliente" = ${clienteId}
+          ORDER BY p."Fecha" DESC
+          LIMIT ${limit} OFFSET ${offset}
+        `
+        
+        // Consulta para el total
+        const totalResult = await sql`
+          SELECT COUNT(*) as total
+          FROM "Pago" p
+          WHERE p."IdCliente" = ${clienteId}
+        `
+        total = totalResult[0]?.total || 0
+        
+      } else if (estado) {
+        pagos = await sql`
+          SELECT 
+            p.*,
+            c."RazonSocial" as "ClienteRazonSocial",
+            c."RucDni" as "ClienteRucDni",
+            c."Email" as "ClienteEmail",
+            b."Nombre" as "BancoNombre"
+          FROM "Pago" p
+          JOIN "Cliente" c ON p."IdCliente" = c."IdCliente"
+          LEFT JOIN "Banco" b ON p."IdBanco" = b."IdBanco"
+          WHERE p."Estado" = ${estado}
+          ORDER BY p."Fecha" DESC
+          LIMIT ${limit} OFFSET ${offset}
+        `
+        
+        const totalResult = await sql`
+          SELECT COUNT(*) as total
+          FROM "Pago" p
+          WHERE p."Estado" = ${estado}
+        `
+        total = totalResult[0]?.total || 0
+        
+      } else {
+        pagos = await sql`
+          SELECT 
+            p.*,
+            c."RazonSocial" as "ClienteRazonSocial",
+            c."RucDni" as "ClienteRucDni",
+            c."Email" as "ClienteEmail",
+            b."Nombre" as "BancoNombre"
+          FROM "Pago" p
+          JOIN "Cliente" c ON p."IdCliente" = c."IdCliente"
+          LEFT JOIN "Banco" b ON p."IdBanco" = b."IdBanco"
+          ORDER BY p."Fecha" DESC
+          LIMIT ${limit} OFFSET ${offset}
+        `
+        
+        const totalResult = await sql`
+          SELECT COUNT(*) as total
+          FROM "Pago" p
+        `
+        total = totalResult[0]?.total || 0
+      }
 
-    const pagos = await sql.unsafe(queryPagos)
-
-    // Consulta para el total
-    const queryTotal = `
-      SELECT COUNT(DISTINCT p."IdPago") as total
-      FROM "Pago" p
-      JOIN "Cliente" c ON p."IdCliente" = c."IdCliente"
-      ${whereClause}
-    `
-
-    const totalResult = await sql.unsafe(queryTotal)
-    const total = Number.parseInt((totalResult as unknown as { total: string }[])[0].total)
+    } catch (queryError) {
+      console.error('Error en consulta de pagos:', queryError)
+      // Si hay error en la consulta, devolver arrays vacíos
+      pagos = []
+      total = 0
+    }
 
     return NextResponse.json({
       success: true,
-      pagos,
+      pagos: pagos || [],
       pagination: {
         page,
         limit,

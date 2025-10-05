@@ -95,35 +95,53 @@ export async function GET(request: NextRequest) {
     const clienteId = searchParams.get("cliente_id")
     const estado = searchParams.get("estado")
 
-    const whereConditions = []
-
-    if (clienteId) {
-      whereConditions.push(`cp."IdCliente" = ${clienteId}`)
+    let compromisos = []
+    
+    try {
+      if (clienteId) {
+        compromisos = await sql`
+          SELECT 
+            cp.*,
+            c."RazonSocial" as "ClienteRazonSocial",
+            u."NombreCompleto" as "ResponsableNombre"
+          FROM "CompromisoPago" cp
+          JOIN "Cliente" c ON cp."IdCliente" = c."IdCliente"
+          LEFT JOIN "Usuario" u ON cp."IdResponsable" = u."IdUsuario"
+          WHERE cp."IdCliente" = ${clienteId}
+          ORDER BY cp."FechaCompromiso" DESC
+        `
+      } else if (estado) {
+        compromisos = await sql`
+          SELECT 
+            cp.*,
+            c."RazonSocial" as "ClienteRazonSocial",
+            u."NombreCompleto" as "ResponsableNombre"
+          FROM "CompromisoPago" cp
+          JOIN "Cliente" c ON cp."IdCliente" = c."IdCliente"
+          LEFT JOIN "Usuario" u ON cp."IdResponsable" = u."IdUsuario"
+          WHERE cp."Estado" = ${estado}
+          ORDER BY cp."FechaCompromiso" DESC
+        `
+      } else {
+        compromisos = await sql`
+          SELECT 
+            cp.*,
+            c."RazonSocial" as "ClienteRazonSocial",
+            u."NombreCompleto" as "ResponsableNombre"
+          FROM "CompromisoPago" cp
+          JOIN "Cliente" c ON cp."IdCliente" = c."IdCliente"
+          LEFT JOIN "Usuario" u ON cp."IdResponsable" = u."IdUsuario"
+          ORDER BY cp."FechaCompromiso" DESC
+        `
+      }
+    } catch (queryError) {
+      console.error('Error en consulta de compromisos:', queryError)
+      compromisos = []
     }
-
-    if (estado) {
-      whereConditions.push(`cp."Estado" = '${estado}'`)
-    }
-
-    const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(" AND ")}` : ""
-
-    const queryCompromisos = `
-      SELECT 
-        cp.*,
-        c."RazonSocial" as "ClienteRazonSocial",
-        u."NombreCompleto" as "ResponsableNombre"
-      FROM "CompromisoPago" cp
-      JOIN "Cliente" c ON cp."IdCliente" = c."IdCliente"
-      LEFT JOIN "Usuario" u ON cp."IdResponsable" = u."IdUsuario"
-      ${whereClause}
-      ORDER BY cp."FechaCompromiso" DESC
-    `
-
-    const compromisos = await sql.unsafe(queryCompromisos)
 
     return NextResponse.json({
       success: true,
-      compromisos,
+      compromisos: compromisos || [],
     })
   } catch (error) {
     console.error("❌ Error al obtener compromisos:", error)

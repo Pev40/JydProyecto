@@ -1,34 +1,194 @@
-import { getClienteById, getPagosByClienteId, getNotificaciones, getCompromisosPago } from "@/lib/queries"
+"use client"
+
+import { useState, useEffect } from "react"
+import { useParams, useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { ArrowLeft, Edit, DollarSign, Bell, Calendar, Phone, Mail, Building, CheckCircle, LinkIcon } from "lucide-react"
+import { ArrowLeft, Edit, DollarSign, Bell, Calendar, Phone, Mail, Building, CheckCircle, LinkIcon, RefreshCw } from "lucide-react"
 import Link from "next/link"
-import { notFound } from "next/navigation"
 
-interface PageProps {
-  params: {
-    id: string
-  }
+interface Cliente {
+  IdCliente: number
+  RazonSocial: string
+  NombreContacto: string
+  RucDni: string
+  UltimoDigitoRUC: number
+  IdClasificacion: number
+  ClasificacionCodigo: string
+  ClasificacionDescripcion: string
+  ClasificacionColor: string
+  IdCartera: number
+  CarteraNombre: string
+  IdEncargado: number
+  EncargadoNombre: string
+  IdServicio: number
+  ServicioNombre: string
+  MontoFijoMensual: number
+  AplicaMontoFijo: boolean
+  IdCategoriaEmpresa: number
+  CategoriaEmpresa: string
+  FechaRegistro: string
+  FechaVencimiento: string
+  Email: string
+  Telefono: string
+  Estado: string
+  SaldoPendiente?: number
 }
 
-export default async function ClienteDetallePage({ params }: PageProps) {
-  const clienteId = Number.parseInt(params.id)
+interface Pago {
+  IdPago: number
+  IdCliente: number
+  ClienteRazonSocial?: string
+  Fecha: string
+  IdBanco?: number
+  BancoNombre?: string
+  Monto: number
+  Concepto?: string
+  MedioPago?: string
+  UrlComprobante?: string
+  MesServicio?: string
+  Estado: string
+}
 
-  if (isNaN(clienteId)) {
-    notFound()
+interface Notificacion {
+  IdNotificacion: number
+  IdCliente: number
+  Tipo: string
+  Fecha: string
+  Estado: string
+  Observaciones?: string
+  TipoNotificacionNombre?: string
+  FechaEnvio?: string
+  Contenido?: string
+  ResponsableNombre?: string
+}
+
+interface Compromiso {
+  IdCompromisoPago: number
+  IdCliente: number
+  FechaCompromiso: string
+  MontoCompromiso: number
+  Estado: string
+  Observaciones?: string
+  IdPagoVinculado?: number
+  ClienteRazonSocial?: string
+  ResponsableNombre?: string
+}
+
+export default function ClienteDetallePage() {
+  const params = useParams()
+  const router = useRouter()
+  const [cliente, setCliente] = useState<Cliente | null>(null)
+  const [pagos, setPagos] = useState<Pago[]>([])
+  const [notificaciones, setNotificaciones] = useState<Notificacion[]>([])
+  const [compromisos, setCompromisos] = useState<Compromiso[]>([])
+  const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
+
+  const clienteId = Number.parseInt(params.id as string)
+
+  const cargarDatos = async (isRefresh = false) => {
+    if (isNaN(clienteId)) {
+      router.push('/clientes')
+      return
+    }
+
+    if (isRefresh) {
+      setRefreshing(true)
+    } else {
+      setLoading(true)
+    }
+
+    try {
+      console.log('🔄 Cargando datos para cliente:', clienteId)
+      
+      const [clienteResponse, pagosResponse, compromisosResponse] = await Promise.all([
+        fetch(`/api/clientes/${clienteId}`),
+        fetch(`/api/pagos?cliente_id=${clienteId}`),
+        fetch(`/api/compromisos?cliente_id=${clienteId}`)
+      ])
+
+      console.log('📡 Respuestas de API:', {
+        cliente: clienteResponse.status,
+        pagos: pagosResponse.status,
+        compromisos: compromisosResponse.status
+      })
+
+      if (!clienteResponse.ok) {
+        throw new Error('Cliente no encontrado')
+      }
+
+      const clienteData = await clienteResponse.json()
+      
+      // Cargar pagos y compromisos por separado para manejar errores individualmente
+      let pagosData = { pagos: [] }
+      let compromisosData = { compromisos: [] }
+      
+      try {
+        pagosData = await pagosResponse.json()
+      } catch (error) {
+        console.error('Error cargando pagos:', error)
+      }
+      
+      try {
+        compromisosData = await compromisosResponse.json()
+      } catch (error) {
+        console.error('Error cargando compromisos:', error)
+      }
+
+      console.log('📊 Datos recibidos:', {
+        cliente: clienteData,
+        pagos: pagosData,
+        compromisos: compromisosData
+      })
+
+      setCliente(clienteData)
+      setPagos(pagosData.pagos || [])
+      setNotificaciones([]) // Las notificaciones no están implementadas en la API actual
+      setCompromisos(compromisosData.compromisos || [])
+    } catch (error) {
+      console.error('❌ Error cargando datos del cliente:', error)
+      router.push('/clientes')
+    } finally {
+      setLoading(false)
+      setRefreshing(false)
+    }
   }
 
-  const [cliente, pagos, notificaciones, compromisos] = await Promise.all([
-    getClienteById(clienteId),
-    getPagosByClienteId(clienteId),
-    getNotificaciones(clienteId),
-    getCompromisosPago(clienteId),
-  ])
+  useEffect(() => {
+    if (clienteId && !isNaN(clienteId)) {
+      cargarDatos()
+    }
+  }, [clienteId])
+
+  const handleRefresh = () => {
+    cargarDatos(true)
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <RefreshCw className="h-8 w-8 animate-spin mx-auto mb-4 text-jd-primary" />
+          <p className="text-jd-gray">Cargando información del cliente...</p>
+        </div>
+      </div>
+    )
+  }
 
   if (!cliente) {
-    notFound()
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-red-600">Cliente no encontrado</p>
+          <Link href="/clientes">
+            <Button className="mt-4">Volver a Clientes</Button>
+          </Link>
+        </div>
+      </div>
+    )
   }
 
   const getClasificacionBadge = (codigo: string | undefined, color: string | undefined) => {
@@ -50,8 +210,8 @@ export default async function ClienteDetallePage({ params }: PageProps) {
     )
   }
 
-  const totalPagado = pagos.reduce((sum, pago) => sum + Number(pago.Monto), 0)
-  const saldoPendiente = cliente.MontoFijoMensual * 12 - totalPagado // Simplificado
+  const totalPagado = Array.isArray(pagos) ? pagos.reduce((sum, pago) => sum + Number(pago.Monto), 0) : 0
+  const saldoPendiente = cliente.SaldoPendiente || 0
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -76,6 +236,16 @@ export default async function ClienteDetallePage({ params }: PageProps) {
               </div>
             </div>
             <div className="flex gap-3">
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={handleRefresh}
+                disabled={refreshing}
+                className="border-white/20 text-white hover:bg-white/10 bg-transparent"
+              >
+                <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+                {refreshing ? 'Actualizando...' : 'Actualizar'}
+              </Button>
               <Link href={`/clientes/${cliente.IdCliente}/editar`}>
                 <Button variant="outline" className="border-white/20 text-white hover:bg-white/10 bg-transparent">
                   <Edit className="h-4 w-4 mr-2" />
@@ -131,7 +301,7 @@ export default async function ClienteDetallePage({ params }: PageProps) {
                 </div>
                 <div>
                   <label className="text-sm font-medium text-jd-gray">Categoría Empresa</label>
-                  <p className="font-medium">{cliente.CategoriaEmpresaNombre || "No especificada"}</p>
+                  <p className="font-medium">{cliente.CategoriaEmpresa || "No especificada"}</p>
                 </div>
                 <div>
                   <label className="text-sm font-medium text-jd-gray">Monto Fijo Mensual</label>
@@ -247,9 +417,9 @@ export default async function ClienteDetallePage({ params }: PageProps) {
                         </tr>
                       </thead>
                       <tbody>
-                        {pagos.map((pago) => {
+                        {Array.isArray(pagos) ? pagos.map((pago) => {
                           // Buscar si este pago está vinculado a un compromiso
-                          const compromisoVinculado = compromisos.find((c) => c.IdPagoVinculado === pago.IdPago)
+                          const compromisoVinculado = Array.isArray(compromisos) ? compromisos.find((c) => c.IdPagoVinculado === pago.IdPago) : null
 
                           return (
                             <tr key={pago.IdPago}>
@@ -260,10 +430,10 @@ export default async function ClienteDetallePage({ params }: PageProps) {
                               <td>{pago.BancoNombre}</td>
                               <td>{pago.Concepto}</td>
                               <td>
-                                {new Date(pago.MesServicio).toLocaleDateString("es-PE", {
+                                {pago.MesServicio ? new Date(pago.MesServicio).toLocaleDateString("es-PE", {
                                   year: "numeric",
                                   month: "long",
-                                })}
+                                }) : "-"}
                               </td>
                               <td>
                                 <Badge
@@ -294,7 +464,7 @@ export default async function ClienteDetallePage({ params }: PageProps) {
                               </td>
                             </tr>
                           )
-                        })}
+                        }) : null}
                       </tbody>
                     </table>
                     
@@ -343,8 +513,8 @@ export default async function ClienteDetallePage({ params }: PageProps) {
                         </tr>
                       </thead>
                       <tbody>
-                        {compromisos.map((compromiso) => {
-                          const pagoVinculado = pagos.find((p) => p.IdPago === compromiso.IdPagoVinculado)
+                        {Array.isArray(compromisos) ? compromisos.map((compromiso) => {
+                          const pagoVinculado = Array.isArray(pagos) ? pagos.find((p) => p.IdPago === compromiso.IdPagoVinculado) : null
                           const fechaCompromiso = new Date(compromiso.FechaCompromiso)
                           const esVencido = compromiso.Estado === "PENDIENTE" && fechaCompromiso < new Date()
 
@@ -408,7 +578,7 @@ export default async function ClienteDetallePage({ params }: PageProps) {
                               </td>
                             </tr>
                           )
-                        })}
+                        }) : null}
                       </tbody>
                     </table>
                   </div>
@@ -440,7 +610,7 @@ export default async function ClienteDetallePage({ params }: PageProps) {
                         <div className="flex justify-between items-start mb-2">
                           <Badge className="jd-badge-info">{notificacion.TipoNotificacionNombre}</Badge>
                           <span className="text-sm text-jd-gray">
-                            {new Date(notificacion.FechaEnvio).toLocaleString("es-PE")}
+                            {notificacion.FechaEnvio ? new Date(notificacion.FechaEnvio).toLocaleString("es-PE") : "-"}
                           </span>
                         </div>
                         <p className="text-sm">{notificacion.Contenido}</p>
