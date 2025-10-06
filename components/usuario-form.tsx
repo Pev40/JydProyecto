@@ -28,10 +28,15 @@ interface UsuarioFormProps {
     IdRol?: number;
     IdCliente?: number;
   };
+  roles: Array<{
+    IdRol: number;
+    NombreRol: string;
+    Descripcion: string;
+  }>;
   onSuccess?: () => void;
 }
 
-export default function UsuarioForm({ usuario, onSuccess }: UsuarioFormProps) {
+export default function UsuarioForm({ usuario, roles, onSuccess }: UsuarioFormProps) {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")

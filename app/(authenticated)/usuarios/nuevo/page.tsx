@@ -1,7 +1,7 @@
 import { getCurrentUser } from "@/lib/auth"
 import { neon } from "@neondatabase/serverless"
 import { redirect } from "next/navigation"
-import { UsuarioForm } from "@/components/usuario-form"
+import UsuarioForm from "@/components/usuario-form"
 
 const sql = neon(process.env.DATABASE_URL!)
 

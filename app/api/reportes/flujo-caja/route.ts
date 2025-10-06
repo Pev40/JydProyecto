@@ -1,9 +1,12 @@
 import { getClientes, getPagos, getPagosPorMes, getCatalogos } from "@/lib/queries"
 import { NextRequest, NextResponse } from "next/server"
 
+// Forzar que esta ruta sea dinámica ya que usa parámetros de consulta
+export const dynamic = 'force-dynamic'
+
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url)
+    const searchParams = request.nextUrl.searchParams
     const tipo = searchParams.get("tipo") || "digito"
     const periodo = searchParams.get("periodo") || "mes"
     const año = searchParams.get("año") ? Number.parseInt(searchParams.get("año")!) : undefined
