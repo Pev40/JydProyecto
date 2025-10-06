@@ -11,11 +11,49 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const año = Number.parseInt(searchParams.get("año") || new Date().getFullYear().toString())
 
-    // Obtener datos del reporte usando la función SQL
-    const result = await sql`SELECT * FROM ObtenerReporteCajaFijaProyectado(${año})`
+    // Obtener datos del reporte usando las tablas base
+    const result = await sql`
+      SELECT 
+        c."IdCliente",
+        c."RazonSocial" as "Concepto",
+        c."RucDni" as "CodigoCliente",
+        c."FechaRegistro" as "FechaInicioServicio",
+        '31' as "FechaCorte",
+        CAST(0 AS DECIMAL(12,2)) as "SaldoAnterior",
+        c."MontoFijoMensual" as "ImporteServicioFijo",
+        CAST(0 AS DECIMAL(12,2)) as "ImporteVariable",
+        c."MontoFijoMensual" as "ImporteAcumulado",
+        'FACTURA' as "TipoComprobante",
+        'DIGITAL' as "MedioDocumento",
+        COALESCE(s."Descripcion", 'Servicio contable mensual') as "VariableDescripcion",
+        CAST(NULL AS DATE) as "FechaUltimaConsulta",
+        (
+          SELECT MAX(p."Fecha"::DATE)
+          FROM "Pago" p 
+          WHERE p."IdCliente" = c."IdCliente"
+        ) as "FechaUltimoPago",
+        CASE 
+          WHEN c."AplicaMontoFijo" = true AND c."MontoFijoMensual" > 0 THEN 'ACTIVO'
+          ELSE 'INACTIVO'
+        END as "EstadoDeuda"
+      FROM "Cliente" c
+      LEFT JOIN "Servicio" s ON c."IdServicio" = s."IdServicio"
+      WHERE c."AplicaMontoFijo" = true
+      ORDER BY c."RazonSocial"
+    `
+
+    // Obtener proyecciones personalizadas si existen
+    const proyecciones = await sql`
+      SELECT 
+        "IdCliente",
+        "Mes",
+        "MontoProyectado"
+      FROM "ProyeccionesCajaFija"
+      WHERE "Año" = ${año}
+    `
 
     type Row = {
-      ProyeccionesJSON?: string
+      IdCliente: number
       Concepto?: string
       CodigoCliente?: string
       FechaInicioServicio?: string
@@ -32,18 +70,36 @@ export async function GET(request: NextRequest) {
       EstadoDeuda?: string
     }
 
-    const datos = (result as Row[]).map((row) => {
-      // Parsear las proyecciones JSON
-      const mesesProyectados: Record<string, number> = (() => {
-        if (!row.ProyeccionesJSON) return {}
-        try {
-          const parsed = JSON.parse(row.ProyeccionesJSON) as Record<string, number>
-          return parsed ?? {}
-        } catch (e) {
-          console.warn("Error parsing projections JSON:", e)
-          return {}
-        }
-      })()
+    type Proyeccion = {
+      IdCliente: number
+      Mes: number
+      MontoProyectado: number
+    }
+
+    // Crear mapa de proyecciones por cliente
+    const proyeccionesMap = new Map<number, Map<number, number>>()
+    proyecciones.forEach((proj: any) => {
+      if (!proyeccionesMap.has(proj.IdCliente)) {
+        proyeccionesMap.set(proj.IdCliente, new Map())
+      }
+      proyeccionesMap.get(proj.IdCliente)!.set(proj.Mes, proj.MontoProyectado)
+    })
+
+    const datos = result.map((row: any) => {
+      // Generar proyecciones mensuales
+      const mesesProyectados: Record<string, number> = {}
+      const mesesAbreviados = ["ENE", "FEB", "MAR", "ABR", "MAY", "JUN", "JUL", "AGO", "SEP", "OCT", "NOV", "DIC"]
+      
+      for (let mes = 1; mes <= 12; mes++) {
+        const claveMes = `${mesesAbreviados[mes - 1]}-${año.toString().slice(-2)}`
+        const montoFijo = Number.parseFloat(String(row.ImporteServicioFijo || 0))
+        
+        // Usar proyección personalizada si existe, sino usar monto fijo
+        const proyeccionesCliente = proyeccionesMap.get(row.IdCliente)
+        const montoProyectado = proyeccionesCliente?.get(mes) ?? montoFijo
+        
+        mesesProyectados[claveMes] = montoProyectado
+      }
 
       return {
         concepto: row.Concepto || "",
@@ -71,7 +127,7 @@ export async function GET(request: NextRequest) {
     mesesAbreviados.forEach((mes) => {
       const claveMes = `${mes}-${año.toString().slice(-2)}`
       totalesPorMes[claveMes] = datos.reduce((sum, cliente) => {
-        return sum + (Number.parseFloat(cliente.mesesProyectados[claveMes]) || 0)
+        return sum + (Number.parseFloat(String(cliente.mesesProyectados[claveMes])) || 0)
       }, 0)
     })
 
@@ -250,11 +306,11 @@ export async function POST(request: NextRequest) {
     resumenData.push(["RESUMEN INGRESOS DEL MES", "TOTAL"])
     resumenData.push([])
 
-    resumenIngresos.forEach((item) => {
+    resumenIngresos.forEach((item: any) => {
       resumenData.push([item.mes, item.total])
     })
 
-    const totalAnual = resumenIngresos.reduce((sum: number, item) => sum + item.total, 0)
+    const totalAnual = resumenIngresos.reduce((sum: number, item: any) => sum + item.total, 0)
     resumenData.push(["TOTAL ANUAL", totalAnual])
 
     const wsResumen = XLSX.utils.aoa_to_sheet(resumenData)

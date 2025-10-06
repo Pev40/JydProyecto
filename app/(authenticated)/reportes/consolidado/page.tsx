@@ -21,7 +21,7 @@ export default async function ReporteConsolidadoPage() {
     const notificacionesCliente = notificaciones.filter((n) => n.IdCliente === cliente.IdCliente)
     const compromisosCliente = compromisos.filter((c) => c.IdCliente === cliente.IdCliente)
 
-    const totalPagado = pagosCliente.reduce((sum, p) => sum + Number(p.Monto), 0)
+    const totalPagado = pagosCliente.reduce((sum, p) => sum + Number(p.Monto || 0), 0)
     const ultimoPago =
       pagosCliente.length > 0 ? new Date(Math.max(...pagosCliente.map((p) => new Date(p.Fecha).getTime()))) : null
     const ultimaNotificacion =
@@ -44,8 +44,8 @@ export default async function ReporteConsolidadoPage() {
 
   const resumenGeneral = {
     totalClientes: clientes.length,
-    totalIngresos: datosConsolidados.reduce((sum, c) => sum + c.totalPagado, 0),
-    totalPendiente: datosConsolidados.reduce((sum, c) => sum + (c.SaldoPendiente || 0), 0),
+    totalIngresos: datosConsolidados.reduce((sum, c) => sum + Number(c.totalPagado || 0), 0),
+    totalPendiente: datosConsolidados.reduce((sum, c) => sum + Number(c.SaldoPendiente || 0), 0),
     clientesAlDia: datosConsolidados.filter((c) => c.ClasificacionCodigo === "A").length,
     clientesMorosos: datosConsolidados.filter((c) => c.ClasificacionCodigo === "C").length,
     totalNotificaciones: notificaciones.length,
@@ -124,8 +124,8 @@ export default async function ReporteConsolidadoPage() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           {catalogos.clasificaciones.map((clasificacion) => {
             const clientesClasif = datosConsolidados.filter((c) => c.ClasificacionCodigo === clasificacion.Codigo)
-            const totalPagadoClasif = clientesClasif.reduce((sum, c) => sum + c.totalPagado, 0)
-            const saldoPendienteClasif = clientesClasif.reduce((sum, c) => sum + (c.SaldoPendiente || 0), 0)
+            const totalPagadoClasif = clientesClasif.reduce((sum, c) => sum + Number(c.totalPagado || 0), 0)
+            const saldoPendienteClasif = clientesClasif.reduce((sum, c) => sum + Number(c.SaldoPendiente || 0), 0)
 
             return (
               <Card key={clasificacion.IdClasificacion}>
@@ -194,8 +194,8 @@ export default async function ReporteConsolidadoPage() {
                 </TableHeader>
                 <TableBody>
                   {datosConsolidados.map((cliente) => {
-                    const totalEsperado = cliente.totalPagado + (cliente.SaldoPendiente || 0)
-                    const porcentajeCumplimiento = totalEsperado > 0 ? (cliente.totalPagado / totalEsperado) * 100 : 0
+                    const totalEsperado = Number(cliente.totalPagado || 0) + Number(cliente.SaldoPendiente || 0)
+                    const porcentajeCumplimiento = totalEsperado > 0 ? (Number(cliente.totalPagado || 0) / Number(totalEsperado)) * 100 : 0
 
                     return (
                       <TableRow key={cliente.IdCliente}>
@@ -225,10 +225,10 @@ export default async function ReporteConsolidadoPage() {
                           </Badge>
                         </TableCell>
                         <TableCell className="text-green-600 font-medium">
-                          S/ {cliente.totalPagado.toLocaleString("es-PE", { minimumFractionDigits: 2 })}
+                          S/ {Number(cliente.totalPagado || 0).toLocaleString("es-PE", { minimumFractionDigits: 2 })}
                         </TableCell>
                         <TableCell className="text-orange-600 font-medium">
-                          S/ {(cliente.SaldoPendiente || 0).toLocaleString("es-PE", { minimumFractionDigits: 2 })}
+                          S/ {Number(cliente.SaldoPendiente || 0).toLocaleString("es-PE", { minimumFractionDigits: 2 })}
                         </TableCell>
                         <TableCell>
                           {cliente.ultimoPago ? cliente.ultimoPago.toLocaleDateString("es-PE") : "Sin pagos"}

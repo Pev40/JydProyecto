@@ -49,6 +49,7 @@ export async function POST(request: NextRequest) {
       Key: fileName,
       Body: buffer,
       ContentType: file.type,
+      ACL: 'public-read', // Hacer el archivo público para lectura
       Metadata: {
         originalName: file.name,
         uploadedAt: new Date().toISOString(),

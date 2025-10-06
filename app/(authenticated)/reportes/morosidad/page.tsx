@@ -1,25 +1,121 @@
-import { getClientes, getPagos, getCompromisosPago } from "@/lib/queries"
-import type { Cliente } from "@/lib/queries"
+"use client"
+
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { ArrowLeft, Download, AlertTriangle, TrendingDown, Calendar, Users } from "lucide-react"
+import { ArrowLeft, Download, AlertTriangle, TrendingDown, Calendar, Users, RefreshCw } from "lucide-react"
 import Link from "next/link"
 
-export default async function AnalisisMorosidadPage() {
-  const [clientes, pagos, compromisos] = await Promise.all([getClientes(), getPagos(), getCompromisosPago()])
+interface Cliente {
+  IdCliente: number
+  RazonSocial: string
+  RucDni: string
+  ClasificacionCodigo?: string
+  ClasificacionColor?: string
+  SaldoPendiente?: number
+}
+
+interface Pago {
+  IdCliente: number
+  Monto: number
+  Fecha: string
+}
+
+interface Compromiso {
+  IdCliente: number
+  FechaCompromiso: string
+  Estado: string
+}
+
+export default function AnalisisMorosidadPage() {
+  const [clientes, setClientes] = useState<Cliente[]>([])
+  const [pagos, setPagos] = useState<Pago[]>([])
+  const [compromisos, setCompromisos] = useState<Compromiso[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  const cargarDatos = async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      console.log('🔄 Cargando datos para análisis de morosidad...')
+      
+      const response = await fetch('/api/reportes/morosidad')
+      const data = await response.json()
+      
+      if (!response.ok) {
+        throw new Error(data.error || 'Error al cargar datos')
+      }
+
+      console.log('📊 Datos recibidos:', data)
+      
+      setClientes(data.clientes || [])
+      setPagos(data.pagos || [])
+      setCompromisos(data.compromisos || [])
+      
+      // Debug: Verificar datos obtenidos
+      console.log('🔍 Datos procesados:', {
+        totalClientes: data.clientes?.length || 0,
+        totalPagos: data.pagos?.length || 0,
+        totalCompromisos: data.compromisos?.length || 0,
+        clasificaciones: (data.clientes || []).reduce((acc: Record<string, number>, c: Cliente) => {
+          acc[c.ClasificacionCodigo || 'Sin clasificación'] = (acc[c.ClasificacionCodigo || 'Sin clasificación'] || 0) + 1
+          return acc
+        }, {})
+      })
+    } catch (error) {
+      console.error('❌ Error cargando datos de morosidad:', error)
+      setError(error instanceof Error ? error.message : 'Error desconocido')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    cargarDatos()
+  }, [])
 
   // Análisis de morosidad
   const clientesMorosos = clientes.filter((c) => c.ClasificacionCodigo === "C")
   const clientesRiesgo = clientes.filter((c) => c.ClasificacionCodigo === "B")
+  
+  console.log('📊 Clientes por clasificación:', {
+    morosos: clientesMorosos.length,
+    riesgo: clientesRiesgo.length,
+    total: clientes.length
+  })
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <RefreshCw className="h-8 w-8 animate-spin mx-auto mb-4" />
+          <p>Cargando análisis de morosidad...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <AlertTriangle className="h-8 w-8 text-red-500 mx-auto mb-4" />
+          <p className="text-red-600 mb-4">Error: {error}</p>
+          <Button onClick={cargarDatos}>Reintentar</Button>
+        </div>
+      </div>
+    )
+  }
 
   const analisisDetallado = clientes
     .map((cliente) => {
       const pagosCliente = pagos.filter((p) => p.IdCliente === cliente.IdCliente)
       const compromisosCliente = compromisos.filter((c) => c.IdCliente === cliente.IdCliente)
 
-      const totalPagado = pagosCliente.reduce((sum, p) => sum + Number(p.Monto), 0)
+      const totalPagado = pagosCliente.reduce((sum, p) => sum + Number(p.Monto || 0), 0)
       const ultimoPago =
         pagosCliente.length > 0 ? new Date(Math.max(...pagosCliente.map((p) => new Date(p.Fecha).getTime()))) : null
       const diasSinPago = ultimoPago ? Math.floor((Date.now() - ultimoPago.getTime()) / (1000 * 60 * 60 * 24)) : null
@@ -41,13 +137,24 @@ export default async function AnalisisMorosidadPage() {
         riesgoMorosidad,
       }
     })
-    .filter((c) => c.ClasificacionCodigo === "B" || c.ClasificacionCodigo === "C")
+    // Temporalmente mostrar todos los clientes para debug
+    // .filter((c) => c.ClasificacionCodigo === "B" || c.ClasificacionCodigo === "C")
     .sort((a, b) => b.riesgoMorosidad.score - a.riesgoMorosidad.score)
+
+  console.log('📈 Análisis detallado:', {
+    totalAnalizados: analisisDetallado.length,
+    clientesAnalizados: analisisDetallado.map(c => ({
+      nombre: c.RazonSocial,
+      clasificacion: c.ClasificacionCodigo,
+      riesgo: c.riesgoMorosidad.nivel,
+      score: c.riesgoMorosidad.score
+    }))
+  })
 
   const estadisticas = {
     totalMorosos: clientesMorosos.length,
     totalRiesgo: clientesRiesgo.length,
-    deudaTotal: analisisDetallado.reduce((sum, c) => sum + (c.SaldoPendiente || 0), 0),
+    deudaTotal: analisisDetallado.reduce((sum, c) => sum + Number(c.SaldoPendiente || 0), 0),
     promedioMesesSinPago:
       analisisDetallado.length > 0
         ? analisisDetallado.reduce((sum, c) => sum + c.mesesSinPago, 0) / analisisDetallado.length
@@ -74,6 +181,10 @@ export default async function AnalisisMorosidadPage() {
               </div>
             </div>
             <div className="flex gap-3">
+              <Button variant="outline" onClick={cargarDatos} disabled={loading}>
+                <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+                Actualizar
+              </Button>
               <Button variant="outline">
                 <Download className="h-4 w-4 mr-2" />
                 Exportar Análisis

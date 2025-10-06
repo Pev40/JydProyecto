@@ -141,6 +141,46 @@ export async function getPagos(): Promise<Pago[]> {
   }
 }
 
+export async function getPagosPorMes(año?: number, mes?: number): Promise<Pago[]> {
+  if (!sql) {
+    throw new Error("Base de datos no disponible")
+  }
+
+  try {
+    // Si no se especifica año y mes, usar el mes actual
+    const fechaActual = new Date()
+    const añoActual = año || fechaActual.getFullYear()
+    const mesActual = mes || fechaActual.getMonth() + 1
+
+    const result = await sql`
+      SELECT 
+        p."IdPago",
+        p."IdCliente",
+        c."RazonSocial" as "ClienteRazonSocial",
+        p."Fecha",
+        p."IdBanco",
+        b."Nombre" as "BancoNombre",
+        p."Monto",
+        p."Concepto",
+        p."MedioPago",
+        p."UrlComprobante",
+        p."MesServicio",
+        p."Estado"
+      FROM "Pago" p
+      LEFT JOIN "Cliente" c ON p."IdCliente" = c."IdCliente"
+      LEFT JOIN "Banco" b ON p."IdBanco" = b."IdBanco"
+      WHERE EXTRACT(YEAR FROM p."Fecha") = ${añoActual}
+        AND EXTRACT(MONTH FROM p."Fecha") = ${mesActual}
+      ORDER BY p."Fecha" DESC
+    `
+
+    return result as Pago[]
+  } catch (error) {
+    console.error("Error fetching payments by month:", error)
+    throw new Error("Error al obtener pagos del mes")
+  }
+}
+
 export async function getClienteById(id: number): Promise<Cliente | null> {
   if (!sql) {
     throw new Error("Base de datos no disponible")

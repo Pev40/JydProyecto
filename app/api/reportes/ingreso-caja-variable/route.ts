@@ -13,42 +13,106 @@ export async function GET(request: NextRequest) {
     const mes = searchParams.get("mes") || ""
     const cliente = searchParams.get("cliente") || ""
 
-    let query = `
-      SELECT 
-        "Mes",
-        "Año",
-        "NombreMes",
-        "Cliente",
-        "Fecha",
-        "DetalleServicio",
-        "NumeroRecibo",
-        "Medio",
-        "Banco",
-        "MontoDevengado",
-        "MontoPagado",
-        "SaldoPendiente",
-        "Observaciones",
-        "MontoOriginal",
-        "Estado"
-      FROM VistaReporteCajaVariable
-      WHERE "Año" = $1
-    `
-
-    const params: (string | number)[] = [Number.parseInt(año)]
-
-    if (mes && mes !== "") {
-      query += ` AND "Mes" = $${params.length + 1}`
-      params.push(Number.parseInt(mes))
+    // Construir la consulta usando template literals de Neon
+    let result
+    
+    if (mes && mes !== "" && cliente && cliente !== "") {
+      // Filtro por año, mes y cliente
+      result = await sql`
+        SELECT 
+          "Mes",
+          "Año",
+          "NombreMes",
+          "Cliente",
+          "Fecha",
+          "DetalleServicio",
+          "NumeroRecibo",
+          "Medio",
+          "Banco",
+          "MontoDevengado",
+          "MontoPagado",
+          "SaldoPendiente",
+          "Observaciones",
+          "MontoOriginal",
+          "Estado"
+        FROM VistaReporteCajaVariable
+        WHERE "Año" = ${Number.parseInt(año)}
+          AND "Mes" = ${Number.parseInt(mes)}
+          AND LOWER("Cliente") LIKE ${`%${cliente.toLowerCase()}%`}
+        ORDER BY "Fecha" DESC, "Cliente"
+      `
+    } else if (mes && mes !== "") {
+      // Filtro por año y mes
+      result = await sql`
+        SELECT 
+          "Mes",
+          "Año",
+          "NombreMes",
+          "Cliente",
+          "Fecha",
+          "DetalleServicio",
+          "NumeroRecibo",
+          "Medio",
+          "Banco",
+          "MontoDevengado",
+          "MontoPagado",
+          "SaldoPendiente",
+          "Observaciones",
+          "MontoOriginal",
+          "Estado"
+        FROM VistaReporteCajaVariable
+        WHERE "Año" = ${Number.parseInt(año)}
+          AND "Mes" = ${Number.parseInt(mes)}
+        ORDER BY "Fecha" DESC, "Cliente"
+      `
+    } else if (cliente && cliente !== "") {
+      // Filtro por año y cliente
+      result = await sql`
+        SELECT 
+          "Mes",
+          "Año",
+          "NombreMes",
+          "Cliente",
+          "Fecha",
+          "DetalleServicio",
+          "NumeroRecibo",
+          "Medio",
+          "Banco",
+          "MontoDevengado",
+          "MontoPagado",
+          "SaldoPendiente",
+          "Observaciones",
+          "MontoOriginal",
+          "Estado"
+        FROM VistaReporteCajaVariable
+        WHERE "Año" = ${Number.parseInt(año)}
+          AND LOWER("Cliente") LIKE ${`%${cliente.toLowerCase()}%`}
+        ORDER BY "Fecha" DESC, "Cliente"
+      `
+    } else {
+      // Solo filtro por año
+      result = await sql`
+        SELECT 
+          "Mes",
+          "Año",
+          "NombreMes",
+          "Cliente",
+          "Fecha",
+          "DetalleServicio",
+          "NumeroRecibo",
+          "Medio",
+          "Banco",
+          "MontoDevengado",
+          "MontoPagado",
+          "SaldoPendiente",
+          "Observaciones",
+          "MontoOriginal",
+          "Estado"
+        FROM VistaReporteCajaVariable
+        WHERE "Año" = ${Number.parseInt(año)}
+        ORDER BY "Fecha" DESC, "Cliente"
+      `
     }
-
-    if (cliente && cliente !== "") {
-      query += ` AND LOWER("Cliente") LIKE $${params.length + 1}`
-      params.push(`%${cliente.toLowerCase()}%`)
-    }
-
-    query += ` ORDER BY "Fecha" DESC, "Cliente"`
-
-  const result = await sql.query(query, params)
 
     // Agrupar por mes
     type Row = {
@@ -82,7 +146,7 @@ export async function GET(request: NextRequest) {
       estado: string
     }[]> = {}
 
-    (result as Row[]).forEach((row) => {
+    result.forEach((row: Row) => {
       const nombreMes = row.NombreMes || `MES_${row.Mes}`
       if (!datosPorMes[nombreMes]) {
         datosPorMes[nombreMes] = []
@@ -106,10 +170,10 @@ export async function GET(request: NextRequest) {
 
     // Calcular totales
     const totales = {
-      devengado: (result as Row[]).reduce((sum, row) => sum + Number.parseFloat(String(row.MontoDevengado || 0)), 0),
-      pagado: (result as Row[]).reduce((sum, row) => sum + Number.parseFloat(String(row.MontoPagado || 0)), 0),
-      saldoPendiente: (result as Row[]).reduce(
-        (sum, row) => sum + Number.parseFloat(String(row.SaldoPendiente || 0)),
+      devengado: result.reduce((sum, row: Row) => sum + Number.parseFloat(String(row.MontoDevengado || 0)), 0),
+      pagado: result.reduce((sum, row: Row) => sum + Number.parseFloat(String(row.MontoPagado || 0)), 0),
+      saldoPendiente: result.reduce(
+        (sum, row: Row) => sum + Number.parseFloat(String(row.SaldoPendiente || 0)),
         0,
       ),
     }
